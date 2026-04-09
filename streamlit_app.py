@@ -2,9 +2,7 @@ import streamlit as st
 import requests
 import numpy as np
 import pandas as pd
-import datetime
-import os
-import plotly.express as px
+import plotly.graph_objects as go
 from sklearn.linear_model import LinearRegression
 from streamlit_autorefresh import st_autorefresh
 from mtranslate import translate
@@ -16,108 +14,68 @@ st.markdown("""
 <style>
     .stApp { background: linear-gradient(135deg, #BF953F, #FCF6BA, #B38728, #AA771C); color: #000; }
     section[data-testid="stSidebar"] { background: linear-gradient(180deg, #A9A9A9, #C0C0C0, #808080) !important; }
-    div[data-testid="stSidebar"] button { width: 100%; background-color: #000 !important; color: #BF953F !important; border: 1px solid #FFD700 !important; margin-bottom: 5px; font-weight: bold; }
     .main-title { color: #FFF; font-size: 35px; font-weight: 800; text-align: center; text-shadow: 2px 2px 4px #000; }
-    .news-box { background-color: #000; padding: 10px; border-radius: 5px; border: 1px solid #BF953F; margin-bottom: 20px; }
-    .stMetric { background: rgba(0,0,0,0.1); padding: 10px; border-radius: 10px; }
+    .stMetric { background: rgba(255,255,255,0.2); padding: 15px; border-radius: 15px; border: 2px solid #000; }
+    .ai-box { background-color: #000; color: #FFD700; padding: 20px; border-radius: 15px; text-align: center; border: 2px solid #FFD700; margin-top: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
-# 15 സെക്കൻഡിൽ ആപ്പ് ഓട്ടോ റിഫ്രഷ് ആകും
-st_autorefresh(interval=15000, key="faisal_v3_ultimate")
+st_autorefresh(interval=15000, key="paichi_ai_v10")
 
-FILE_NAME = 'trade_history_v2.csv'
-EXPENSE_FILE = 'home_expenses.csv'
-
-# --- ഫംഗ്ഷനുകൾ ---
-
-def get_live_aed_rate():
-    try:
-        res = requests.get("https://query1.finance.yahoo.com/v8/finance/chart/AEDINR=X?interval=1m&range=1d", headers={'User-Agent': 'Mozilla/5.0'}).json()
-        return res['chart']['result'][0]['meta']['regularMarketPrice']
-    except: return 22.80
-
-def get_live_news_malayalam():
-    try:
-        url = "https://query1.finance.yahoo.com/v1/finance/search?q=Nifty,Crude%20Oil,Gold&newsCount=5"
-        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}).json()
-        news_list = [item['title'] for item in res['news']]
-        full_news = "  |  ".join(news_list)
-        return translate(full_news, "ml", "en")
-    except: return "വാർത്തകൾ അപ്‌ഡേറ്റ് ചെയ്യുന്നു..."
-
-def get_analysis(symbol):
+# --- AI പ്രെഡിക്ഷൻ ഫംഗ്ഷൻ ---
+def get_ai_prediction(symbol):
     try:
         res = requests.get(f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&range=1d", headers={'User-Agent': 'Mozilla/5.0'}).json()
         data = res['chart']['result'][0]
-        p = data['meta']['regularMarketPrice']
-        close = [c for c in data['indicators']['quote'][0]['close'] if c is not None]
-        ai_p = float(LinearRegression().fit(np.arange(5).reshape(-1, 1), np.array(close[-5:]).reshape(-1,1)).predict([[5]])[0][0]) if len(close)>5 else p
-        return {"p": p, "ai": ai_p}
-    except: return None
+        current_price = data['meta']['regularMarketPrice']
+        
+        # അവസാന 10 മിനിറ്റിലെ വില എടുക്കുന്നു
+        close_prices = [c for c in data['indicators']['quote'][0]['close'] if c is not None]
+        if len(close_prices) > 10:
+            y = np.array(close_prices[-10:]).reshape(-1, 1)
+            x = np.arange(10).reshape(-1, 1)
+            model = LinearRegression().fit(x, y)
+            next_price = model.predict([[10]])[0][0]
+            return round(current_price, 2), round(next_price, 2), close_prices[-20:]
+        return current_price, current_price, close_prices
+    except: return None, None, []
 
-# --- 1. മലയാളം ലൈവ് വാർത്തകൾ (TOP) ---
-news_mal = get_live_news_malayalam()
-st.markdown(f"""
-    <div class="news-box">
-        <h4 style="color: #BF953F; margin: 0; font-size: 16px; text-align: center;">📰 മലയാളം ലൈവ് വാർത്തകൾ</h4>
-        <marquee scrollamount="5" style="color: #FFF; font-size: 18px; font-weight: bold; padding-top: 5px;">
-            📢 {news_mal}
-        </marquee>
-    </div>
-""", unsafe_allow_html=True)
-
-# --- 2. സൈഡ് ബാർ മെനു ---
+# --- സൈഡ് ബാർ ---
 with st.sidebar:
     st.title("🚀 Paichi Pro")
-    live_aed = get_live_aed_rate()
-    st.success(f"💰 1 AED = ₹{live_aed:.2f}")
+    mode = st.radio("മെനു:", ["📈 AI MARKET", "📝 JOURNAL"])
+
+st.markdown(f'<p class="main-title">🚀 Paichi AI Trader</p>', unsafe_allow_html=True)
+
+if mode == "📈 AI MARKET":
+    asset = st.selectbox("Select Asset", ["CL=F", "^NSEI", "^NSEBANK"], 
+                         format_func=lambda x: "CRUDE OIL" if x=="CL=F" else ("NIFTY 50" if x=="^NSEI" else "BANK NIFTY"))
     
-    st.divider()
-    option = st.radio("Choose Section", 
-        ["📈 Trading AI", "📊 Journal & Dashboard", "💰 Home Expenses", "📚 Student Corner", "📸 Family Gallery"])
-    st.divider()
-
-st.markdown(f'<p class="main-title">🚀 Paichi Family Hub</p>', unsafe_allow_html=True)
-
-# --- സെക്ഷൻ ലോജിക് ---
-
-if option == "📈 Trading AI":
-    st.header("🎯 Market Analysis")
-    symbol = st.selectbox("Select Item", ["CL=F", "^NSEI", "^NSEBANK", "GC=F"], 
-                          format_func=lambda x: "Crude Oil" if x=="CL=F" else ("Nifty 50" if x=="^NSEI" else ("Bank Nifty" if x=="^NSEBANK" else "Gold")))
+    curr, pred, history = get_ai_prediction(asset)
     
-    data = get_analysis(symbol)
-    if data:
-        multi = 93.5 if symbol=="CL=F" else 1
-        live_p, ai_p = data['p'] * multi, data['ai'] * multi
-        c1, c2 = st.columns(2)
-        c1.metric("Live Price", f"₹{live_p:.2f}")
-        c2.metric("AI Prediction", f"₹{ai_p:.2f}")
-        st.line_chart(pd.DataFrame({"Market Trend": [live_p-2, live_p-1, live_p, ai_p]}))
+    if curr:
+        multi = 93.5 if asset=="CL=F" else 1
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.metric("നിലവിലെ വില", f"₹{curr*multi:.2f}")
+        
+        with col2:
+            diff = (pred - curr) * multi
+            st.metric("AI പ്രവചനം (Next)", f"₹{pred*multi:.2f}", delta=f"{diff:.2f}")
 
-elif option == "📊 Journal & Dashboard":
-    st.header("📝 Trading Journal")
-    st.info("നിന്റെ ട്രേഡുകൾ ഇവിടെ രേഖപ്പെടുത്താം.")
-    # (Journal code remains here)
+        # AI ചാർട്ട്
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(y=[p*multi for p in history], mode='lines', name='Actual', line=dict(color='black', width=3)))
+        fig.add_trace(go.Scatter(x=[len(history)], y=[pred*multi], mode='markers', name='AI Target', marker=dict(color='red', size=12)))
+        
+        fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=350, margin=dict(l=0,r=0,t=0,b=0))
+        st.plotly_chart(fig, use_container_width=True)
 
-elif option == "💰 Home Expenses":
-    st.header("🏠 മാസിക ചെലവുകൾ")
-    with st.expander("ചെലവ് ആഡ് ചെയ്യുക"):
-        date = st.date_input("തിയതി")
-        item = st.text_input("സാധനം/വിശദീകരണം")
-        amt = st.number_input("തുക (₹)", min_value=0.0)
-        if st.button("Save Expense"):
-            st.success("സേവ് ചെയ്തു!")
+        # AI സിഗ്നൽ ബോക്സ്
+        if pred > curr:
+            st.markdown('<div class="ai-box"><h3>🚀 AI SIGNAL: BULLISH (BUY)</h3><p>അടുത്ത മിനിറ്റുകളിൽ വില കൂടാൻ സാധ്യതയുണ്ട്.</p></div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="ai-box"><h3>📉 AI SIGNAL: BEARISH (SELL)</h3><p>അടുത്ത മിനിറ്റുകളിൽ വില കുറയാൻ സാധ്യതയുണ്ട്.</p></div>', unsafe_allow_html=True)
 
-elif option == "📚 Student Corner":
-    st.header("👨‍🎓 Study Materials")
-    std = st.selectbox("ക്ലാസ്സ് തിരഞ്ഞെടുക്കുക", ["SSLC", "+1", "+2"])
-    st.write(f"{std} വിദ്യാർത്ഥികൾക്ക് വേണ്ടിയുള്ള നോട്സുകളും ലിങ്കുകളും ഇവിടെ ലഭ്യമാകും.")
-
-elif option == "📸 Family Gallery":
-    st.header("🖼️ ഓർമ്മകൾ")
-    st.write("നിന്റെ കുടുംബത്തിലെ പ്രധാന ഫോട്ടോകൾ ഇവിടെ ഗാലറിയായി കാണാം.")
-
-st.sidebar.markdown("---")
 st.sidebar.write("Created with ❤️ by Faisal")
