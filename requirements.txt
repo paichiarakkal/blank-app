@@ -1,1 +1,8 @@
 streamlit
+requests
+numpy
+pandas
+scikit-learn
+streamlit-autorefresh
+mtranslate
+plotly
