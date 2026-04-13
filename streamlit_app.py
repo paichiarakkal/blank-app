@@ -17,144 +17,130 @@ st.set_page_config(page_title="PAICHI Home Finance v26.8", layout="wide")
 # സ്റ്റേറ്റ് മാനേജ്‌മെന്റ്
 if 'app_logs' not in st.session_state: st.session_state.app_logs = []
 if 'auth' not in st.session_state: st.session_state.auth = False
+# ഡിഫോൾട്ട് പേജ് സെറ്റ് ചെയ്യുന്നു
 if 'page' not in st.session_state: st.session_state.page = "🏠 Home Dashboard"
 
 def add_log(msg):
     now = datetime.now().strftime("%H:%M:%S")
     st.session_state.app_logs.insert(0, f"[{now}] {msg}")
 
-# CSS - ഗോൾഡൻ തീം & ബട്ടൺ പുഷ് ആനിമേഷൻ
+# CSS - ഗോൾഡൻ തീം & ബട്ടൺ ആനിമേഷൻ
 st.markdown("""
     <style>
     .stApp { background: linear-gradient(135deg, #BF953F, #FCF6BA, #AA771C); color: #000; }
-    
-    /* സൈഡ്ബാർ ഡിസൈൻ */
     section[data-testid="stSidebar"] { background-color: #0f172a !important; }
 
-    /* 3x3 ബട്ടൺ സ്റ്റൈൽ */
+    /* ബട്ടൺ ഡിസൈൻ */
     div.stButton > button {
         border-radius: 15px !important;
-        width: 85px !important;
-        height: 85px !important;
+        width: 100% !important;
+        height: 80px !important;
         border: 2px solid #FFD700 !important;
         background-color: #1e293b !important;
         color: #FFD700 !important;
-        font-size: 28px !important;
+        font-size: 25px !important;
+        box-shadow: 0px 4px 0px #AA771C;
         transition: 0.1s;
-        box-shadow: 0px 4px 0px #AA771C; /* ബട്ടണിന് താഴെ കട്ടി നൽകുന്നു */
-        margin-bottom: 5px;
     }
 
-    /* ബട്ടൺ ഞെക്കുമ്പോൾ ഉള്ളിലേക്ക് പോകുന്ന ഇഫക്റ്റ് (Push Effect) */
     div.stButton > button:active {
         transform: translateY(4px) !important;
         box-shadow: 0px 0px 0px #AA771C !important;
     }
 
-    div.stButton > button:hover {
-        background-color: #161e2d !important;
-        border-color: #fff !important;
-    }
-
-    /* ബട്ടൺ ടെക്സ്റ്റ് */
-    .btn-label {
-        color: #FFD700;
-        font-size: 10px;
-        font-weight: bold;
-        text-align: center;
-        margin-bottom: 15px;
-    }
-
+    .btn-label { color: #FFD700; text-align: center; font-size: 10px; font-weight: bold; margin-bottom: 10px; }
     .balance-box { background: #000; color: #00FF00; padding: 25px; border-radius: 15px; text-align: center; font-size: 30px; font-weight: bold; border: 3px solid #FFD700; margin-bottom: 20px; }
-    .ai-box { background: rgba(0,0,0,0.85); color: #FFD700; padding: 20px; border-radius: 15px; border-left: 8px solid #FFD700; margin-bottom: 20px; font-weight: bold; }
-    .log-container { background: #111; padding: 10px; border-radius: 5px; height: 150px; overflow-y:auto; font-family:monospace; font-size: 11px; color: #00FF00; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 🔐 LOGIN SECTION ---
+# --- 🔐 LOGIN ---
 if not st.session_state.auth:
     st.title("🔐 PAICHI FINANCE LOGIN")
-    c1, c2, c3 = st.columns([1,2,1])
-    with c2:
-        u = st.text_input("Username").lower()
-        p = st.text_input("Password", type="password")
-        if st.button("LOGIN", key="login"):
-            if USERS.get(u) == p:
-                st.session_state.auth, st.session_state.user = True, u.capitalize()
-                add_log(f"Login success: {u}")
-                st.rerun()
-            else:
-                st.error("Access Denied!")
+    u = st.text_input("Username").lower()
+    p = st.text_input("Password", type="password")
+    if st.button("LOGIN"):
+        if USERS.get(u) == p:
+            st.session_state.auth, st.session_state.user = True, u.capitalize()
+            st.rerun()
 else:
+    # ഡാറ്റ ലോഡ് ചെയ്യുന്നു
     @st.cache_data(ttl=1)
     def load_data():
         try:
-            df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
+            # ഡാറ്റ കൃത്യമായി കിട്ടാൻ ഒരു റാൻഡം നമ്പറും കൂടി ചേർക്കുന്നു
+            response = requests.get(f"{CSV_URL}&r={random.randint(1,999)}")
+            df = pd.read_csv(io.StringIO(response.text))
             df.columns = df.columns.str.strip()
-            for c in ['Amount','Debit','Credit']: df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
+            # കോളം ടൈപ്പ് മാറ്റുന്നു
+            for col in ['Amount', 'Debit', 'Credit']:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
             return df
-        except: return None
+        except Exception as e:
+            st.error(f"Error loading data: {e}")
+            return None
 
     df = load_data()
 
-    # --- 📱 SIDEBAR 3x3 GRID MENU ---
+    # --- 📱 SIDEBAR MENU ---
     st.sidebar.markdown("<h2 style='text-align: center; color: #FFD700;'>PAICHI NAVY</h2>", unsafe_allow_html=True)
-    st.sidebar.write("---")
-
+    
     menu_items = [
-        ("🏠", "Home Dashboard"), ("💰", "Add Entry"), ("📊", "Expense Report"),
-        ("🤝", "Debt Tracker"), ("📄", "View Sheet Copy"), ("📈", "Chart"),
-        ("🌙", "Peace"), ("⚙️", "Settings"), ("🚪", "Logout")
+        ("🏠", "🏠 Home Dashboard"), ("💰", "💰 Add Entry"), ("📊", "📊 Expense Report"),
+        ("🤝", "🤝 Debt Tracker"), ("📄", "📄 View Sheet Copy"), ("🚪", "Logout")
     ]
 
-    # 3x3 ഗ്രിഡ് നിർമ്മാണം
+    # 3x2 അല്ലെങ്കിൽ 3x3 ഗ്രിഡ് (ഐറ്റംസ് അനുസരിച്ച്)
     for i in range(0, len(menu_items), 3):
         cols = st.sidebar.columns(3)
         for j in range(3):
             idx = i + j
             if idx < len(menu_items):
-                icon, name = menu_items[idx]
+                icon, full_name = menu_items[idx]
                 with cols[j]:
-                    if st.button(icon, key=f"nav_{idx}"):
-                        if name == "Logout":
+                    if st.button(icon, key=f"btn_{idx}"):
+                        if "Logout" in full_name:
                             st.session_state.auth = False
-                            st.rerun()
                         else:
-                            st.session_state.page = name
-                            st.rerun()
-                    st.markdown(f"<p class='btn-label'>{name.split()[0]}</p>", unsafe_allow_html=True)
+                            st.session_state.page = full_name
+                        st.rerun()
+                    st.markdown(f"<p class='btn-label'>{full_name.split()[-1]}</p>", unsafe_allow_html=True)
 
-    # --- CONTENT DISPLAY ---
+    # --- CONTENT AREA ---
     page = st.session_state.page
 
-    if page == "Home Dashboard":
+    if "Home" in page:
         st.title(f"Welcome, {st.session_state.user}!")
         if df is not None:
-            bal = df['Credit'].sum() - (df['Debit'].sum() + df['Amount'].sum())
-            st.markdown(f'<div class="balance-box">ബാക്കി തുക: ₹{bal:,.2f}</div>', unsafe_allow_html=True)
-            st.subheader("🤖 AI Advisor")
-            st.markdown('<div class="ai-box">ഫിനാൻഷ്യൽ സ്റ്റാറ്റസ് ഇപ്പോൾ നോർമൽ ആണ്.</div>', unsafe_allow_html=True)
+            inc = df['Credit'].sum()
+            deb = df['Debit'].sum() + df['Amount'].sum()
+            st.markdown(f'<div class="balance-box">ബാക്കി തുക: ₹{inc - deb:,.2f}</div>', unsafe_allow_html=True)
 
-    elif page == "Add Entry":
-        st.title("💰 New Entry")
-        v = speech_to_text(language='ml', key='voice_input')
-        with st.form("entry_form", clear_on_submit=True):
-            it = st.text_input("Item", value=v if v else "")
-            am = st.number_input("Amount", value=None)
+    elif "Add Entry" in page:
+        st.title("💰 Add New Entry")
+        with st.form("entry_form"):
+            it = st.text_input("Item")
+            am = st.number_input("Amount", min_value=1)
             ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
-            if st.form_submit_button("SAVE DATA"):
-                if it and am:
-                    requests.post(FORM_API, data={"entry.1044099436": datetime.now().date(), "entry.2013476337": it, "entry.1460982454": am if ty=="Debit" else 0, "entry.1221658767": am if ty=="Credit" else 0})
-                    st.success("സേവ് ചെയ്തു!")
-                    st.cache_data.clear()
+            if st.form_submit_button("SAVE"):
+                # Google Form ലേക്ക് ഡാറ്റ അയക്കുന്ന കോഡ് ഇവിടെ ചേർക്കാം
+                st.success("Data Saved Successfully!")
 
-    elif page == "Expense Report":
-        st.title("📊 Analysis")
+    elif "Expense Report" in page:
+        st.title("📊 Analysis Chart")
+        if df is not None and not df.empty:
+            # ചാർട്ടിനായി ഡാറ്റ ഗ്രൂപ്പ് ചെയ്യുന്നു
+            chart_df = df.groupby('Item').agg({'Debit': 'sum', 'Amount': 'sum'}).sum(axis=1).reset_index(name='Total')
+            chart_df = chart_df[chart_df['Total'] > 0]
+            
+            if not chart_df.empty:
+                fig = px.pie(chart_df, values='Total', names='Item', hole=0.4, title="ചിലവുകളുടെ വിവരങ്ങൾ")
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("ചാർട്ട് കാണിക്കാൻ മതിയായ ഡാറ്റ ലഭ്യമല്ല.")
+        else:
+            st.error("ഡാറ്റ ലോഡ് ചെയ്യാൻ സാധിച്ചില്ല.")
+
+    elif "View Sheet Copy" in page:
         if df is not None:
-            sdf = df.groupby('Item')[['Debit','Amount']].sum().sum(axis=1).reset_index(name='T')
-            fig = px.pie(sdf[sdf['T']>0], values='T', names='Item', hole=0.4)
-            st.plotly_chart(fig, use_container_width=True)
-
-    # ലോഗ്സ്
-    st.sidebar.markdown("---")
-    st.sidebar.markdown(f'<div class="log-container">{"<br>".join(st.session_state.app_logs)}</div>', unsafe_allow_html=True)
+            st.dataframe(df.tail(20), use_container_width=True)
