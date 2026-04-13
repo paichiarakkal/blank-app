@@ -1,13 +1,5 @@
-streamlit
-requests
-numpy
 pandas
+plotly
 scikit-learn
-streamlit-autorefresh
-mtranslate
-plotly
-streamlit
-pandas
-requests
-plotly
 streamlit-mic-recorder
+requests
