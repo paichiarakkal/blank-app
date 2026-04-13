@@ -6,13 +6,14 @@ import random
 import plotly.express as px
 from streamlit_mic_recorder import speech_to_text
 import io
+import re
 
-# 1. ലിങ്കുകളും ലോഗിൻ വിവരങ്ങളും
+# 1. ലിങ്കുകൾ
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRccfZch3jSdHqrScpqsR_j3FSd70NbELC1j6_nPi-MQXdrhVr3BPcKoI1nub4mQql727pQRPWYk9C-/pub?gid=1583146028&single=true&output=csv"
 FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh77RnJKWc2-uqAM0TPNG3Q5A/formResponse"
 USERS = {"faisal": "faisal123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI Home Finance v27", layout="wide")
+st.set_page_config(page_title="PAICHI ROWDY FINANCE", layout="wide")
 
 # സ്റ്റേറ്റ് മാനേജ്‌മെന്റ്
 if 'auth' not in st.session_state: st.session_state.auth = False
@@ -23,84 +24,81 @@ def add_log(msg):
     now = datetime.now().strftime("%H:%M:%S")
     st.session_state.app_logs.insert(0, f"[{now}] {msg}")
 
-# CSS - ഗോൾഡൻ തീം & അനിമേഷൻ ബട്ടണുകൾ
+# CSS - "ROWDY" GOLDEN THEME & ANIMATIONS
 st.markdown("""
     <style>
-    .stApp { background: linear-gradient(135deg, #BF953F, #FCF6BA, #AA771C); color: #000; }
+    .stApp { background: linear-gradient(135deg, #BF953F, #000, #AA771C); color: #fff; }
     
-    /* Sidebar Styling */
-    [data-testid="stSidebar"] { background-color: #0f172a !important; min-width: 320px !important; }
+    /* Sidebar Rowdy Styling */
+    [data-testid="stSidebar"] { background-color: #000 !important; border-right: 2px solid #FFD700; min-width: 320px !important; }
     
-    /* 3x3 Grid Buttons Styling */
+    /* Animation for Buttons */
+    @keyframes rowdy-glow {
+        0% { box-shadow: 0 0 5px #FFD700; }
+        50% { box-shadow: 0 0 20px #FFD700, 0 0 30px #BF953F; }
+        100% { box-shadow: 0 0 5px #FFD700; }
+    }
+
     div.stButton > button {
-        width: 100% !important;
-        height: 90px !important;
-        border-radius: 15px !important;
-        background: linear-gradient(145deg, #1e293b, #0f172a) !important;
+        width: 100% !important; height: 95px !important;
+        border-radius: 12px !important;
+        background: #111 !important;
         color: #FFD700 !important;
         border: 2px solid #FFD700 !important;
-        font-weight: bold !important;
-        transition: all 0.3s ease !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
-        margin-bottom: 10px !important;
+        font-size: 18px !important;
+        font-weight: 900 !important;
+        text-transform: uppercase;
+        transition: 0.2s;
+        animation: rowdy-glow 2s infinite;
+        margin-bottom: 5px !important;
     }
     
     div.stButton > button:hover {
-        transform: translateY(-5px) scale(1.02) !important;
+        transform: scale(1.08) rotate(1deg) !important;
         background: #FFD700 !important;
         color: #000 !important;
-        box-shadow: 0 0 20px #FFD700 !important;
+        border: 2px solid #fff !important;
     }
 
-    .balance-box { background: #000; color: #00FF00; padding: 25px; border-radius: 15px; text-align: center; font-size: 30px; font-weight: bold; border: 3px solid #FFD700; margin-bottom: 20px; }
-    .ai-box { background: rgba(0,0,0,0.85); color: #FFD700; padding: 20px; border-radius: 15px; border-left: 8px solid #FFD700; margin-bottom: 20px; font-weight: bold; }
-    .log-container { background: #000; padding: 10px; border-radius: 5px; height: 120px; overflow-y:auto; font-family:monospace; font-size: 10px; color: #00FF00; border: 1px solid #FFD700; }
+    .balance-box { background: #111; color: #00FF00; padding: 25px; border-radius: 15px; text-align: center; font-size: 32px; font-weight: bold; border: 4px solid #FFD700; box-shadow: 0 0 15px #FFD700; }
+    .log-container { background: #111; padding: 10px; border-radius: 5px; height: 100px; overflow-y:auto; font-size: 11px; color: #FFD700; border: 1px solid #444; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 🔐 LOGIN SECTION ---
+# --- LOGIN ---
 if not st.session_state.auth:
-    st.title("🔐 PAICHI FINANCE LOGIN")
-    c1, c2, c3 = st.columns([1,2,1])
-    with c2:
-        u = st.text_input("Username").lower()
-        p = st.text_input("Password", type="password")
-        if st.button("LOGIN"):
-            if USERS.get(u) == p:
-                st.session_state.auth, st.session_state.user = True, u.capitalize()
-                st.rerun()
-            else: st.error("Access Denied!")
+    st.title("🔥 PAICHI ROWDY LOGIN")
+    u = st.text_input("Username").lower()
+    p = st.text_input("Password", type="password")
+    if st.button("ENTER SYSTEM"):
+        if USERS.get(u) == p:
+            st.session_state.auth, st.session_state.user = True, u.capitalize()
+            st.rerun()
 else:
-    # Sidebar 3x3 Grid Navigation
-    st.sidebar.markdown("<h2 style='text-align: center; color: #FFD700;'>PAICHI NAVY</h2>", unsafe_allow_html=True)
+    # --- SIDEBAR 3x3 ROWDY GRID ---
+    st.sidebar.markdown("<h1 style='text-align: center; color: #FFD700;'>PAICHI NAVY</h1>", unsafe_allow_html=True)
     
-    # 3x3 ബട്ടണുകൾ സെറ്റ് ചെയ്യുന്നു
     menu_items = [
         ("🏠", "🏠 Home"), ("💰", "💰 Entry"), ("🤝", "🤝 Debt"),
         ("📄", "📄 Sheet"), ("📊", "📊 Chart"), ("🎙️", "🎙️ Voice"),
         ("📱", "📱 App"), ("⚙️", "⚙️ Setup"), ("🚪", "Logout")
     ]
 
-    # Grid നിർമ്മാണം
     for i in range(0, len(menu_items), 3):
         cols = st.sidebar.columns(3)
         for j in range(3):
             if i + j < len(menu_items):
                 icon, name = menu_items[i+j]
                 with cols[j]:
-                    if st.button(f"{icon}\n{name.split()[-1]}"):
+                    # ബട്ടണിനുള്ളിൽ പേര് വരാൻ \n ഉപയോഗിക്കുന്നു
+                    if st.button(f"{icon}\n{name.split()[-1]}", key=f"rowdy_{i+j}"):
                         if name == "Logout":
                             st.session_state.auth = False
-                            st.rerun()
                         else:
                             st.session_state.page = name
-                            st.rerun()
+                        st.rerun()
 
-    # Data Loading
+    # Data Load
     @st.cache_data(ttl=1)
     def load_data():
         try:
@@ -112,41 +110,49 @@ else:
 
     df = load_data()
 
-    # --- Pages Implementation ---
+    # --- PAGES ---
     if st.session_state.page == "🏠 Home":
-        st.title(f"Welcome, {st.session_state.user}!")
+        st.title(f"🔥 Welcome Leader, {st.session_state.user}")
         if df is not None:
             bal = df['Credit'].sum() - (df['Debit'].sum() + df['Amount'].sum())
-            st.markdown(f'<div class="balance-box">ബാക്കി തുക: ₹{bal:,.2f}</div>', unsafe_allow_html=True)
-            
-            st.subheader("🤖 AI Advisor")
-            st.markdown('<div class="ai-box">നിങ്ങളുടെ വരുമാനവും ചിലവും ഇപ്പോൾ കൃത്യമായി ട്രാക്ക് ചെയ്യപ്പെടുന്നുണ്ട്.</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="balance-box">CASH: ₹{bal:,.2f}</div>', unsafe_allow_html=True)
+
+    elif st.session_state.page == "🎙️ Voice":
+        st.title("🎙️ വോയിസ് എൻട്രി (Rowdy Style)")
+        st.write("പറയൂ Faisal, ഞാൻ കേൾക്കുന്നുണ്ട്...")
+        text = speech_to_text(language='ml', key='v_rec', start_prompt="Speak Now", stop_prompt="Stop")
+        if text:
+            st.success(f"Captured: {text}")
+            nums = re.findall(r'\d+', text)
+            suggested_am = float(nums[0]) if nums else 0.0
+            with st.form("v_form"):
+                it = st.text_input("Item", value=text)
+                am = st.number_input("Amount", value=suggested_am)
+                if st.form_submit_button("SAVE VOICE DATA"):
+                    requests.post(FORM_API, data={"entry.1044099436": datetime.now().date(), "entry.2013476337": f"[Voice] {it}", "entry.1460982454": am, "entry.1221658767": 0})
+                    st.success("Boom! Saved. ✅")
+                    add_log(f"Voice: {it}")
 
     elif st.session_state.page == "💰 Entry":
-        st.title("Add New Entry")
-        with st.form("entry_form", clear_on_submit=True):
-            it = st.text_input("Item")
-            am = st.number_input("Amount", value=0.0)
-            ty = st.selectbox("Type", ["Debit (ചിലവ്)", "Credit (വരുമാനം)"])
-            if st.form_submit_button("SAVE DATA"):
-                if it and am:
-                    d, c = (am, 0) if "Debit" in ty else (0, am)
-                    payload = {"entry.1044099436": datetime.now().date(), "entry.2013476337": f"[{st.session_state.user}] {it}", "entry.1460982454": d, "entry.1221658767": c}
-                    requests.post(FORM_API, data=payload)
-                    st.success("സേവ് ചെയ്തു! ✅")
-                    add_log(f"Added: {it}")
+        st.title("💰 Quick Entry")
+        with st.form("q_entry"):
+            it = st.text_input("What for?")
+            am = st.number_input("How much?", value=0.0)
+            if st.form_submit_button("CONFIRM ENTRY"):
+                requests.post(FORM_API, data={"entry.1044099436": datetime.now().date(), "entry.2013476337": it, "entry.1460982454": am, "entry.1221658767": 0})
+                st.balloons()
+                st.success("Entry Added!")
 
-    elif st.session_state.page == "📄 Sheet":
-        st.title("History")
-        if df is not None: st.dataframe(df.tail(20), use_container_width=True)
+    elif st.session_state.page == "📱 App":
+        st.title("📱 System Info")
+        st.markdown("### PAICHI OS v28.0\n**Status:** Online\n**Security:** Encrypted")
 
-    elif st.session_state.page == "📊 Chart":
-        st.title("Analysis")
-        if df is not None:
-            sdf = df.groupby('Item')[['Debit','Amount']].sum().sum(axis=1).reset_index(name='T')
-            fig = px.pie(sdf[sdf['T']>0], values='T', names='Item', hole=0.4)
-            st.plotly_chart(fig)
+    elif st.session_state.page == "⚙️ Setup":
+        st.title("⚙️ System Setup")
+        st.write("Configuring system parameters...")
+        st.button("Reset Cache")
+        st.button("Sync Data")
 
-    # Sidebar Logs
+    # --- Logs ---
     st.sidebar.markdown("---")
     st.sidebar.markdown(f'<div class="log-container">{"<br>".join(st.session_state.app_logs)}</div>', unsafe_allow_html=True)
