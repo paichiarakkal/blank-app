@@ -10,3 +10,4 @@ streamlit-mic-recorder
 openpyxl
 xlsxwriter
 kaleido
+scikit-learn
