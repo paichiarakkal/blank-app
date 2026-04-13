@@ -4,35 +4,31 @@ import requests
 from datetime import datetime
 import random
 import plotly.express as px
-from streamlit_mic_recorder import speech_to_text
 import io
 from PIL import Image
 import easyocr
 import numpy as np
 import re
 
-# 1. ലിങ്കുകളും ലോഗിൻ വിവരങ്ങളും
+# 1. ലിങ്കുകളും കോൺഫിഗറേഷനും
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRccfZch3jSdHqrScpqsR_j3FSd70NbELC1j6_nPi-MQXdrhVr3BPcKoI1nub4mQql727pQRPWYk9C-/pub?gid=1583146028&single=true&output=csv"
 FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh77RnJKWc2-uqAM0TPNG3Q5A/formResponse"
 USERS = {"faisal": "faisal123", "admin": "paichi786"}
 
 st.set_page_config(page_title="PAICHI Home Finance v31", layout="wide")
 
-if 'auth' not in st.session_state: st.session_state.auth = False
-if 'page' not in st.session_state: st.session_state.page = "🏠 Dashboard"
-
-# EasyOCR Reader Initialize
+# EasyOCR ലോഡ് ചെയ്യുന്നു (requirements.txt-ൽ easyocr വേണം)
 @st.cache_resource
 def get_ocr_reader():
     return easyocr.Reader(['en'])
 
 reader = get_ocr_reader()
 
-# CSS - ഗോൾഡൻ തീം & 3x3 ബട്ടൺ ലേഔട്ട്
+# UI തീം - ഗോൾഡൻ & ഡാർക്ക്
 st.markdown("""
     <style>
     .stApp { background: linear-gradient(135deg, #BF953F, #FCF6BA, #AA771C); color: #000; }
-    section[data-testid="stSidebar"] { background-color: #0f172a !important; min-width: 300px !important; }
+    [data-testid="stSidebar"] { background-color: #0f172a !important; min-width: 300px !important; }
     
     div.stButton > button {
         border-radius: 20px !important;
@@ -45,12 +41,16 @@ st.markdown("""
         box-shadow: 0px 4px 0px #AA771C;
         margin-bottom: 5px;
     }
-    div.stButton > button:active { transform: translateY(4px); box-shadow: none; }
     .btn-label { color: #FFD700; font-size: 11px; font-weight: bold; text-align: center; margin-bottom: 15px; }
     .balance-box { background: #000; color: #00FF00; padding: 20px; border-radius: 15px; text-align: center; font-size: 28px; font-weight: bold; border: 3px solid #FFD700; }
     </style>
     """, unsafe_allow_html=True)
 
+# സെഷൻ സ്റ്റേറ്റ്
+if 'auth' not in st.session_state: st.session_state.auth = False
+if 'page' not in st.session_state: st.session_state.page = "🏠 Dashboard"
+
+# ലോഗിൻ സിസ്റ്റം
 if not st.session_state.auth:
     st.title("🔐 PAICHI LOGIN")
     u = st.text_input("Username").lower()
@@ -60,6 +60,7 @@ if not st.session_state.auth:
             st.session_state.auth, st.session_state.user = True, u.capitalize()
             st.rerun()
 else:
+    # ഡാറ്റ ലോഡ് ചെയ്യൽ
     @st.cache_data(ttl=1)
     def load_data():
         try:
@@ -71,86 +72,69 @@ else:
 
     df = load_data()
 
-    # --- 📱 SIDEBAR 3x3 NAVIGATION ---
+    # --- 📱 3x3 SIDEBAR NAVIGATION ---
     st.sidebar.markdown("<h2 style='text-align: center; color: #FFD700;'>PAICHI NAVY</h2>", unsafe_allow_html=True)
-    menu = [
+    menu_items = [
         ("🏠", "🏠 Dashboard"), ("💰", "💰 Entry"), ("🤝", "🤝 Tracker"),
         ("📸", "📸 Scan Bill"), ("📊", "📊 Report"), ("📄", "📄 Copy"),
         ("🌙", "🌙 Peace"), ("⚙️", "⚙️ Setup"), ("🚪", "Logout")
     ]
 
-    for i in range(0, len(menu), 3):
+    for i in range(0, len(menu_items), 3):
         cols = st.sidebar.columns(3)
         for j in range(3):
-            idx = i + j
-            if idx < len(menu):
-                icon, name = menu[idx]
+            if i + j < len(menu_items):
+                icon, name = menu_items[i+j]
                 with cols[j]:
-                    if st.button(icon, key=f"nav_{idx}"):
+                    if st.button(icon, key=f"btn_{i+j}"):
                         if name == "Logout": st.session_state.auth = False
                         else: st.session_state.page = name
                         st.rerun()
                     st.markdown(f"<p class='btn-label'>{name.split()[-1]}</p>", unsafe_allow_html=True)
 
-    # --- CONTENT ---
+    # --- പേജ് ലോജിക് ---
     page = st.session_state.page
 
     if "Dashboard" in page:
         st.title(f"Welcome {st.session_state.user}")
         if df is not None:
             bal = df['Credit'].sum() - (df['Debit'].sum() + df['Amount'].sum())
-            st.markdown(f'<div class="balance-box">Total Balance: ₹{bal:,.2f}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="balance-box">Balance: ₹{bal:,.2f}</div>', unsafe_allow_html=True)
 
     elif "Scan Bill" in page:
-        st.title("📸 Scan Bill (Smart OCR)")
-        file = st.file_uploader("ഗാലറിയിൽ നിന്ന് ബില്ല് എടുക്കുക", type=['jpg','png','jpeg'])
+        st.title("📸 Scan Bill")
+        file = st.file_uploader("ബില്ലിന്റെ ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക", type=['jpg','png','jpeg'])
         if file:
             img = Image.open(file)
             st.image(img, width=300)
-            
-            with st.spinner('ബില്ല് പരിശോധിക്കുന്നു...'):
-                result = reader.readtext(np.array(img), detail=0)
-                full_text = " ".join(result)
+            with st.spinner('പരിശോധിക്കുന്നു...'):
+                res_ocr = reader.readtext(np.array(img), detail=0)
+                full_text = " ".join(res_ocr)
                 
-                # 1. തുക കണ്ടെത്തുന്നു (Amount Precision)
-                # '₹' ചിഹ്നത്തിന് ശേഷമുള്ള നമ്പറുകൾക്ക് മുൻഗണന നൽകുന്നു
-                amounts = re.findall(r'(?:₹|Rs|INR|Total|Paid)\s*[:]*\s*([\d,]+\.?\d*)', full_text, re.IGNORECASE)
-                
+                # Smart Amount Detection
+                # '₹' ഉള്ള സംഖ്യകൾക്ക് മുൻഗണന നൽകുന്നു
+                amounts = re.findall(r'(?:₹|Rs|Total|Paid)\s*[:]*\s*([\d,]+\.?\d*)', full_text, re.IGNORECASE)
                 if amounts:
-                    # 1 ലക്ഷത്തിന് താഴെയുള്ള ഏറ്റവും വലിയ തുക കണ്ടെത്തുന്നു
-                    possible_amounts = [float(a.replace(',', '')) for a in amounts if float(a.replace(',', '')) < 100000]
-                    suggested_am = max(possible_amounts) if possible_amounts else 0.0
+                    valid_nums = [float(a.replace(',', '')) for a in amounts if float(a.replace(',', '')) < 100000]
+                    suggested_am = max(valid_nums) if valid_nums else 0.0
                 else:
-                    # ചിഹ്നങ്ങൾ ഇല്ലെങ്കിൽ നമ്പറുകൾ മാത്രം നോക്കുന്നു (ID ഒഴിവാക്കാൻ)
-                    numbers = []
-                    for t in result:
-                        clean = t.replace(',', '').replace('.', '').strip()
-                        if clean.isdigit():
-                            try: numbers.append(float(t.replace(',', '')))
-                            except: pass
-                    # 1 ലക്ഷത്തിന് താഴെയുള്ള വലിയ സംഖ്യ എടുക്കുന്നു
-                    valid_amounts = [n for n in numbers if n < 100000]
-                    suggested_am = max(valid_amounts) if valid_amounts else 0.0
+                    # വലിയ Transaction ID ഒഴിവാക്കുന്നു
+                    numbers = [float(t.replace(',', '')) for t in res_ocr if t.replace(',', '').replace('.', '').isdigit()]
+                    valid_nums = [n for n in numbers if n < 100000]
+                    suggested_am = max(valid_nums) if valid_nums else 0.0
 
-                # 2. ഐറ്റം കണ്ടെത്തുന്നു (Name/Merchant Detection)
+                # Smart Item Detection
                 suggested_it = "Bill Entry"
-                for i, text in enumerate(result):
+                for i, text in enumerate(res_ocr):
                     if any(x in text for x in ["To", "Paid to", "Transfer to"]):
-                        if i + 1 < len(result):
-                            suggested_it = result[i+1]
-                            break
+                        if i + 1 < len(res_ocr): suggested_it = res_ocr[i+1]; break
 
-            with st.form("scan_save"):
+            with st.form("ocr_save"):
                 it = st.text_input("Item", value=suggested_it)
                 am = st.number_input("Amount", value=float(suggested_am))
                 if st.form_submit_button("CONFIRM & SAVE"):
-                    requests.post(FORM_API, data={
-                        "entry.1044099436": datetime.now().date(), 
-                        "entry.2013476337": f"[Scan] {it}", 
-                        "entry.1460982454": am, 
-                        "entry.1221658767": 0
-                    })
-                    st.success("വിജയകരമായി സേവ് ചെയ്തു! ✅")
+                    requests.post(FORM_API, data={"entry.1044099436": datetime.now().date(), "entry.2013476337": it, "entry.1460982454": am, "entry.1221658767": 0})
+                    st.success("സേവ് ചെയ്തു! ✅")
                     st.cache_data.clear()
 
     elif "Entry" in page:
@@ -164,9 +148,3 @@ else:
                 requests.post(FORM_API, data={"entry.1044099436": datetime.now().date(), "entry.2013476337": it, "entry.1460982454": d, "entry.1221658767": c})
                 st.success("Saved!")
                 st.cache_data.clear()
-
-    elif "Report" in page:
-        st.title("📊 Analysis")
-        if df is not None:
-            fig = px.pie(df[df['Debit']>0], values='Debit', names='Item', hole=0.4)
-            st.plotly_chart(fig, use_container_width=True)
