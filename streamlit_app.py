@@ -1,81 +1,135 @@
 import streamlit as st
-import requests
-import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
-from sklearn.linear_model import LinearRegression
-from streamlit_autorefresh import st_autorefresh
-from mtranslate import translate
+import requests
+from datetime import datetime
+import random
+import urllib.parse
+from streamlit_mic_recorder import speech_to_text
 
-# 1. പേജ് സെറ്റിംഗ്സ് & ഗോൾഡൻ തീം
-st.set_page_config(page_title="Paichi AI Trader Pro", layout="wide")
+# 1. Settings
+CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR2UqKgCAEEv42IC6vwe0D2g_pW7-XR2Qiv7_FwAZYFDTDLd7pOwKQ5yvClbwy88AZmD6Ar2AiFQ8Xu/pub?output=csv"
+FORM_URL_API = "https://docs.google.com/forms/d/e/1FAIpQLScHkSw0nkgNQSeRGocM85t4bZCkWHQS6EUSDf-5dIts1gWZXw/formResponse"
+MY_NUMBER = "918714752210"
 
+# സൈഡ്‌ബാർ തിരികെ കൊണ്ടുവന്നു
+st.set_page_config(page_title="PAICHI SIDE-OS", layout="wide", initial_sidebar_state="expanded")
+
+# --- 🌗 SIDEBAR ICON UI DESIGN ---
 st.markdown("""
-<style>
-    .stApp { background: linear-gradient(135deg, #BF953F, #FCF6BA, #B38728, #AA771C); color: #000; }
-    section[data-testid="stSidebar"] { background: linear-gradient(180deg, #A9A9A9, #C0C0C0, #808080) !important; }
-    .main-title { color: #FFF; font-size: 35px; font-weight: 800; text-align: center; text-shadow: 2px 2px 4px #000; }
-    .stMetric { background: rgba(255,255,255,0.2); padding: 15px; border-radius: 15px; border: 2px solid #000; }
-    .ai-box { background-color: #000; color: #FFD700; padding: 20px; border-radius: 15px; text-align: center; border: 2px solid #FFD700; margin-top: 10px; }
-</style>
-""", unsafe_allow_html=True)
+    <style>
+    .stApp { background: #000000; color: #ffffff; }
+    
+    /* സൈഡ്‌ബാർ സ്റ്റൈൽ */
+    [data-testid="stSidebar"] {
+        background-color: #0a0a0a !important;
+        border-right: 1px solid #ffd700;
+        min-width: 150px !important;
+    }
 
-st_autorefresh(interval=15000, key="paichi_ai_v10")
+    /* സൈഡ്‌ബാറിലെ റൗണ്ട് ബട്ടണുകൾ */
+    .stSidebar .stButton > button {
+        background: #1a1a1a !important;
+        color: #ffd700 !important;
+        border: 2px solid #333 !important;
+        border-radius: 50% !important; /* റൗണ്ട് ആക്കി */
+        height: 80px !important;
+        width: 80px !important;
+        margin: 10px auto !important;
+        display: flex !important;
+        font-size: 25px !important;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+    
+    .stSidebar .stButton > button:active {
+        transform: scale(0.9);
+        border-color: #ffd700 !important;
+    }
 
-# --- AI പ്രെഡിക്ഷൻ ഫംഗ്ഷൻ ---
-def get_ai_prediction(symbol):
-    try:
-        res = requests.get(f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&range=1d", headers={'User-Agent': 'Mozilla/5.0'}).json()
-        data = res['chart']['result'][0]
-        current_price = data['meta']['regularMarketPrice']
-        
-        # അവസാന 10 മിനിറ്റിലെ വില എടുക്കുന്നു
-        close_prices = [c for c in data['indicators']['quote'][0]['close'] if c is not None]
-        if len(close_prices) > 10:
-            y = np.array(close_prices[-10:]).reshape(-1, 1)
-            x = np.arange(10).reshape(-1, 1)
-            model = LinearRegression().fit(x, y)
-            next_price = model.predict([[10]])[0][0]
-            return round(current_price, 2), round(next_price, 2), close_prices[-20:]
-        return current_price, current_price, close_prices
-    except: return None, None, []
+    /* സൈഡ്‌ബാറിലെ ലേബൽ */
+    .side-label {
+        text-align: center;
+        font-size: 10px;
+        color: #888;
+        font-weight: bold;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+    }
 
-# --- സൈഡ് ബാർ ---
+    .main-card {
+        background: #0d0d0d;
+        padding: 30px;
+        border-radius: 25px;
+        border: 1px solid #ffd700;
+        text-align: center;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 🧠 NAV LOGIC ---
+if 'page' not in st.session_state:
+    st.session_state.page = "🏠 HOME"
+
+def nav(p):
+    st.session_state.page = p
+
+# --- 🏰 SIDEBAR DRAWER (Round Icons) ---
 with st.sidebar:
-    st.title("🚀 Paichi Pro")
-    mode = st.radio("മെനു:", ["📈 AI MARKET", "📝 JOURNAL"])
-
-st.markdown(f'<p class="main-title">🚀 Paichi AI Trader</p>', unsafe_allow_html=True)
-
-if mode == "📈 AI MARKET":
-    asset = st.selectbox("Select Asset", ["CL=F", "^NSEI", "^NSEBANK"], 
-                         format_func=lambda x: "CRUDE OIL" if x=="CL=F" else ("NIFTY 50" if x=="^NSEI" else "BANK NIFTY"))
+    st.markdown("<h3 style='text-align: center; color: #ffd700;'>MENU</h3>", unsafe_allow_html=True)
+    st.write("---")
     
-    curr, pred, history = get_ai_prediction(asset)
+    # ഓരോ ഐക്കണും അതിനു താഴെ പേരും
+    st.button("🏠", on_click=nav, args=("🏠 HOME",))
+    st.markdown("<p class='side-label'>HOME</p>", unsafe_allow_html=True)
+
+    st.button("💰", on_click=nav, args=("ADD",))
+    st.markdown("<p class='side-label'>ADD ENTRY</p>", unsafe_allow_html=True)
+
+    st.button("📊", on_click=nav, args=("DATA",))
+    st.markdown("<p class='side-label'>REPORTS</p>", unsafe_allow_html=True)
+
+    st.button("🌙", on_click=nav, args=("PEACE",))
+    st.markdown("<p class='side-label'>PEACE</p>", unsafe_allow_html=True)
+
+    st.button("🔄", on_click=st.rerun)
+    st.markdown("<p class='side-label'>REFRESH</p>", unsafe_allow_html=True)
+
+# --- 🏠 MAIN CONTENT AREA ---
+if st.session_state.page == "🏠 HOME":
+    st.markdown("<h1 style='color: #ffd700;'>PAICHI AI</h1>", unsafe_allow_html=True)
     
-    if curr:
-        multi = 93.5 if asset=="CL=F" else 1
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.metric("നിലവിലെ വില", f"₹{curr*multi:.2f}")
-        
-        with col2:
-            diff = (pred - curr) * multi
-            st.metric("AI പ്രവചനം (Next)", f"₹{pred*multi:.2f}", delta=f"{diff:.2f}")
+    try:
+        df = pd.read_csv(f"{CSV_URL}&ref={random.randint(1,999)}")
+        df['Amount'] = pd.to_numeric(df.iloc[:, -1], errors='coerce').fillna(0)
+        total = df['Amount'].sum()
+    except: total = 0
 
-        # AI ചാർട്ട്
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(y=[p*multi for p in history], mode='lines', name='Actual', line=dict(color='black', width=3)))
-        fig.add_trace(go.Scatter(x=[len(history)], y=[pred*multi], mode='markers', name='AI Target', marker=dict(color='red', size=12)))
-        
-        fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=350, margin=dict(l=0,r=0,t=0,b=0))
-        st.plotly_chart(fig, use_container_width=True)
+    st.markdown(f'''
+        <div class="main-card">
+            <p style="color: #555; font-size: 14px; margin:0;">CURRENT BALANCE / SPENT</p>
+            <h1 style="color: #fff; font-size: 50px; margin:10px 0;">₹ {total:,.2f}</h1>
+        </div>
+    ''', unsafe_allow_html=True)
+    st.info("സൈഡ്‌ബാറിലെ ഐക്കണുകൾ ഉപയോഗിച്ച് പേജുകൾ മാറ്റാം.")
 
-        # AI സിഗ്നൽ ബോക്സ്
-        if pred > curr:
-            st.markdown('<div class="ai-box"><h3>🚀 AI SIGNAL: BULLISH (BUY)</h3><p>അടുത്ത മിനിറ്റുകളിൽ വില കൂടാൻ സാധ്യതയുണ്ട്.</p></div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div class="ai-box"><h3>📉 AI SIGNAL: BEARISH (SELL)</h3><p>അടുത്ത മിനിറ്റുകളിൽ വില കുറയാൻ സാധ്യതയുണ്ട്.</p></div>', unsafe_allow_html=True)
+elif st.session_state.page == "ADD":
+    st.header("📥 Add Transaction")
+    v_text = speech_to_text(language='ml', start_prompt="സംസാരിക്കൂ...", key='voice')
+    with st.form("entry"):
+        item = st.text_input("Item", value=v_text if v_text else "")
+        amt = st.number_input("Amount", min_value=0)
+        if st.form_submit_button("SAVE"):
+            requests.post(FORM_URL_API, data={"entry.1069832729": datetime.now().strftime("%Y-%m-%d"), "entry.1896057694": item, "entry.1570426033": str(amt)})
+            st.success("Data Saved!")
 
-st.sidebar.write("Created with ❤️ by Faisal")
+elif st.session_state.page == "DATA":
+    st.header("📊 Financial Data")
+    try:
+        df = pd.read_csv(CSV_URL)
+        st.dataframe(df, use_container_width=True)
+    except: st.error("No Data found.")
+
+elif st.session_state.page == "PEACE":
+    st.header("🌙 Peace Mode")
+    st.write("Morning greetings and more...")
+
+st.markdown("<br><p style='text-align: center; color: #222;'>PAICHI OS v44.0 | Side-Icon Edition</p>", unsafe_allow_html=True)
