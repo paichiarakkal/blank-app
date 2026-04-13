@@ -11,3 +11,4 @@ openpyxl
 xlsxwriter
 kaleido
 scikit-learn
+pytesseract
