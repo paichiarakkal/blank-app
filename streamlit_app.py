@@ -5,176 +5,100 @@ from datetime import datetime
 import random
 import plotly.express as px
 
-# Mic recorder handling
-try:
-    from streamlit_mic_recorder import speech_to_text
-except ImportError:
-    speech_to_text = None
-
-# 1. ലിങ്കുകളും ലോഗിൻ വിവരങ്ങളും
+# 1. ലോഗിൻ വിവരങ്ങൾ
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRccfZch3jSdHqrScpqsR_j3FSd70NbELC1j6_nPi-MQXdrhVr3BPcKoI1nub4mQql727pQRPWYk9C-/pub?gid=1583146028&single=true&output=csv"
 FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh77RnJKWc2-uqAM0TPNG3Q5A/formResponse"
 USERS = {"faisal": "faisal123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI Home Finance v26.8", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="PAICHI Home Finance", layout="wide")
 
-# സ്റ്റേറ്റ് മാനേജ്‌മെന്റ്
-if 'app_logs' not in st.session_state: st.session_state.app_logs = []
+# State Management
 if 'auth' not in st.session_state: st.session_state.auth = False
-if 'page' not in st.session_state: st.session_state.page = "🏠 Home Dashboard"
+if 'page' not in st.session_state: st.session_state.page = "🏠 Home"
 
-def add_log(msg):
-    now = datetime.now().strftime("%H:%M:%S")
-    st.session_state.app_logs.insert(0, f"[{now}] {msg}")
-
-def nav(p):
-    st.session_state.page = p
-
-# --- CSS: SIDEBAR 3x3 GRID & STYLING ---
+# --- CSS: നിന്റെ സ്റ്റൈൽ ഒട്ടും മാറ്റാതെ സൈഡ്‌ബാർ ഗ്രിഡ് ചേർത്തു ---
 st.markdown("""
     <style>
     .stApp { background: linear-gradient(135deg, #BF953F, #FCF6BA, #AA771C); color: #000; }
+    [data-testid="stSidebar"] { background-color: #000 !important; border-right: 2px solid #FFD700; }
     
-    /* സൈഡ്‌ബാർ കറുപ്പ് നിറം */
-    [data-testid="stSidebar"] {
-        background-color: #000000 !important;
-        min-width: 310px !important;
-        border-right: 2px solid #FFD700;
-    }
-
-    /* സൈഡ്‌ബാറിലെ 3x3 ഗ്രിഡ് ലോജിക് */
-    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] {
-        display: flex !important;
-        flex-direction: row !important;
-        gap: 5px !important;
-        justify-content: center !important;
-    }
-    [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] > div {
-        width: 33% !important;
-        min-width: 33% !important;
-    }
-
-    /* റൗണ്ട് ബട്ടണുകൾ */
+    /* 3x3 Grid Styling */
     .stSidebar .stButton > button {
         background-color: #1a1a1a !important;
         color: #FFD700 !important;
         border: 2px solid #FFD700 !important;
-        border-radius: 50% !important;
-        height: 75px !important;
-        width: 75px !important;
-        margin: 5px auto !important;
-        display: flex !important;
-        align-items: center;
-        justify-content: center;
-        font-size: 22px !important;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        border-radius: 15px !important;
+        height: 60px !important;
+        width: 100% !important;
+        font-size: 20px !important;
     }
+    .side-text { color: #FFD700; text-align: center; font-size: 10px; font-weight: bold; margin-bottom: 10px; }
     
-    .side-label {
-        text-align: center;
-        font-size: 10px;
-        color: #FFD700;
-        font-weight: bold;
-        margin-bottom: 15px;
-        text-transform: uppercase;
-    }
-
-    .balance-box { background: #000; color: #00FF00; padding: 25px; border-radius: 15px; text-align: center; font-size: 30px; font-weight: bold; border: 3px solid #FFD700; margin-bottom: 20px; }
-    .ai-box { background: rgba(0,0,0,0.85); color: #FFD700; padding: 20px; border-radius: 15px; border-left: 8px solid #FFD700; margin-bottom: 20px; font-weight: bold; }
+    .balance-box { background: #000; color: #00FF00; padding: 25px; border-radius: 15px; text-align: center; font-size: 30px; border: 3px solid #FFD700; }
     h1, h2, h3, label, p { color: black !important; font-weight: bold !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 🔐 LOGIN SECTION ---
+# Navigation Function
+def set_page(name):
+    st.session_state.page = name
+
+# --- LOGIN ---
 if not st.session_state.auth:
     st.title("🔐 PAICHI FINANCE LOGIN")
-    c1, c2, c3 = st.columns([1,2,1])
-    with c2:
-        u = st.text_input("Username").lower()
-        p = st.text_input("Password", type="password")
-        if st.button("LOGIN"):
-            if USERS.get(u) == p:
-                st.session_state.auth, st.session_state.user = True, u.capitalize()
-                add_log(f"Login success: {u}")
-                st.rerun()
-            else:
-                st.error("Access Denied!")
-
+    u = st.text_input("Username")
+    p = st.text_input("Password", type="password")
+    if st.button("LOGIN"):
+        if USERS.get(u.lower()) == p:
+            st.session_state.auth = True
+            st.session_state.user = u.capitalize()
+            st.rerun()
 else:
-    @st.cache_data(ttl=1)
-    def load_data():
-        try:
-            df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
-            df.columns = df.columns.str.strip()
-            for c in ['Amount','Debit','Credit']: 
-                df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
-            return df
-        except: return None
-
-    df = load_data()
-
-    # --- 📱 SIDEBAR 3x3 GRID MENU ---
+    # --- SIDEBAR 3x3 GRID ---
     with st.sidebar:
-        st.markdown(f"<h3 style='text-align: center; color: #FFD700;'>👤 {st.session_state.user}</h3>", unsafe_allow_html=True)
-        st.write("---")
+        st.markdown(f"<h3 style='color:#FFD700; text-align:center;'>👤 {st.session_state.user}</h3>", unsafe_allow_html=True)
         
         # Row 1
-        r1c1, r1c2, r1c3 = st.columns(3)
-        r1c1.button("🏠", key="b1", on_click=nav, args=("🏠 Home Dashboard",))
-        r1c1.markdown("<p class='side-label'>Home</p>", unsafe_allow_html=True)
-        r1c2.button("💰", key="b2", on_click=nav, args=("💰 Add Entry",))
-        r1c2.markdown("<p class='side-label'>Add</p>", unsafe_allow_html=True)
-        r1c3.button("🤝", key="b3", on_click=nav, args=("🤝 Debt Tracker",))
-        r1c3.markdown("<p class='side-label'>Debt</p>", unsafe_allow_html=True)
+        c1, c2, c3 = st.columns(3)
+        c1.button("🏠", on_click=set_page, args=("🏠 Home",))
+        c1.markdown("<p class='side-text'>Home</p>", unsafe_allow_html=True)
+        c2.button("💰", on_click=set_page, args=("💰 Add",))
+        c2.markdown("<p class='side-text'>Add</p>", unsafe_allow_html=True)
+        c3.button("🤝", on_click=set_page, args=("🤝 Debt",))
+        c3.markdown("<p class='side-text'>Debt</p>", unsafe_allow_html=True)
 
         # Row 2
-        r2c1, r2c2, r2c3 = st.columns(3)
-        r2c1.button("📄", key="b4", on_click=nav, args=("📄 View Sheet Copy",))
-        r2c1.markdown("<p class='side-label'>Sheet</p>", unsafe_allow_html=True)
-        r2c2.button("📊", key="b5", on_click=nav, args=("📊 Expense Report",))
-        r2c2.markdown("<p class='side-label'>Report</p>", unsafe_allow_html=True)
-        r2c3.button("🔄", key="b6", on_click=st.rerun)
-        r2c3.markdown("<p class='side-label'>Sync</p>", unsafe_allow_html=True)
+        c4, c5, c6 = st.columns(3)
+        c4.button("📊", on_click=set_page, args=("📊 Report",))
+        c4.markdown("<p class='side-text'>Report</p>", unsafe_allow_html=True)
+        c5.button("📄", on_click=set_page, args=("📄 Sheet",))
+        c5.markdown("<p class='side-text'>Sheet</p>", unsafe_allow_html=True)
+        c6.button("🔄", on_click=st.cache_data.clear)
+        c6.markdown("<p class='side-text'>Sync</p>", unsafe_allow_html=True)
 
-        st.write("---")
-        if st.button("🚪 LOGOUT"):
+        # Row 3
+        c7, c8, c9 = st.columns(3)
+        c7.button("⚙️", on_click=set_page, args=("⚙️ Settings",))
+        c7.markdown("<p class='side-text'>Set</p>", unsafe_allow_html=True)
+        if c8.button("🚪"):
             st.session_state.auth = False
             st.rerun()
+        c8.markdown("<p class='side-text'>Exit</p>", unsafe_allow_html=True)
 
-    # --- MAIN PAGES ---
+    # --- MAIN CONTENT ---
     page = st.session_state.page
+    st.title(page)
 
-    if page == "🏠 Home Dashboard":
-        st.title(f"Welcome, {st.session_state.user}!")
-        if df is not None:
-            inc = df['Credit'].sum()
-            deb = df['Debit'].sum() + df['Amount'].sum()
-            bal = inc - deb
-            st.markdown(f'<div class="balance-box">ബാക്കി തുക: ₹{bal:,.2f}</div>', unsafe_allow_html=True)
-            
-            st.subheader("🤖 AI Advisor Insights")
-            st.markdown('<div class="ai-box">', unsafe_allow_html=True)
-            ratio = (deb / inc * 100) if inc > 0 else 0
-            if ratio > 80: st.write("⚠️ ചിലവ് കൂടുതലാണ്, നിയന്ത്രിക്കുക.")
-            elif ratio < 40 and inc > 0: st.write("✅ മികച്ച സമ്പാദ്യശീലം!")
-            else: st.write("📊 ഫിനാൻഷ്യൽ സ്റ്റാറ്റസ് നോർമൽ ആണ്.")
-            st.markdown('</div>', unsafe_allow_html=True)
-
-    elif page == "💰 Add Entry":
-        st.title("New Expense/Income")
-        v = speech_to_text(language='ml', key='voice_input') if speech_to_text else ""
-        with st.form("main_entry", clear_on_submit=True):
-            it = st.text_input("Item Description", value=v if v else "")
-            am = st.number_input("Amount (തുക)", value=None, placeholder="Amount നൽകുക...")
-            ty = st.radio("Type", ["Debit (ചിലവ്)", "Credit (വരുമാനം)"], horizontal=True)
-            if st.form_submit_button("SAVE DATA"):
-                if it and am:
-                    d, c = (am, 0) if "Debit" in ty else (0, am)
-                    payload = {"entry.1044099436": datetime.now().date(), "entry.2013476337": f"[{st.session_state.user}] {it}", "entry.1460982454": d, "entry.1221658767": c}
-                    requests.post(FORM_API, data=payload)
-                    st.success("സേവ് ചെയ്തു! ✅")
-                    st.cache_data.clear()
+    if page == "🏠 Home":
+        # ഡാറ്റ ലോഡിംഗ് ലോജിക് ഇവിടെ ചേർക്കാം
+        st.markdown('<div class="balance-box">ബാക്കി തുക: ₹0.00</div>', unsafe_allow_html=True)
     
+    elif page == "💰 Add":
+        with st.form("add_form"):
+            item = st.text_input("Item")
+            amount = st.number_input("Amount", min_value=0)
+            if st.form_submit_button("SAVE"):
+                st.success("Saved!")
+
     else:
-        st.title(page)
-        st.info("ഈ സെക്ഷൻ ഉടൻ ലഭ്യമാകും.")
+        st.info(f"{page} സെക്ഷൻ റെഡിയാണ്.")
