@@ -6,3 +6,8 @@ scikit-learn
 streamlit-autorefresh
 mtranslate
 plotly
+streamlit
+pandas
+requests
+plotly
+streamlit-mic-recorder
