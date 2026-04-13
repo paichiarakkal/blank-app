@@ -1,5 +1,12 @@
+streamlit
 pandas
-plotly
-scikit-learn
-streamlit-mic-recorder
 requests
+easyocr
+opencv-python-headless
+Pillow
+numpy
+plotly
+streamlit-mic-recorder
+openpyxl
+xlsxwriter
+kaleido
