@@ -16,7 +16,7 @@ CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRccfZch3jSdHqrScpqsR
 FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh77RnJKWc2-uqAM0TPNG3Q5A/formResponse"
 USERS = {"faisal": "faisal123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI Home Finance v30", layout="wide")
+st.set_page_config(page_title="PAICHI Home Finance v31", layout="wide")
 
 if 'auth' not in st.session_state: st.session_state.auth = False
 if 'page' not in st.session_state: st.session_state.page = "🏠 Dashboard"
@@ -102,32 +102,43 @@ else:
             st.markdown(f'<div class="balance-box">Total Balance: ₹{bal:,.2f}</div>', unsafe_allow_html=True)
 
     elif "Scan Bill" in page:
-        st.title("📸 Scan Bill (EasyOCR)")
+        st.title("📸 Scan Bill (Smart OCR)")
         file = st.file_uploader("ഗാലറിയിൽ നിന്ന് ബില്ല് എടുക്കുക", type=['jpg','png','jpeg'])
         if file:
             img = Image.open(file)
             st.image(img, width=300)
             
-            with st.spinner('ബില്ല് സ്കാൻ ചെയ്യുന്നു...'):
+            with st.spinner('ബില്ല് പരിശോധിക്കുന്നു...'):
                 result = reader.readtext(np.array(img), detail=0)
+                full_text = " ".join(result)
                 
-                # തുകയും പേരും കണ്ടുപിടിക്കുന്നു
-                all_numbers = []
-                suggested_it = "Bill Entry"
+                # 1. തുക കണ്ടെത്തുന്നു (Amount Precision)
+                # '₹' ചിഹ്നത്തിന് ശേഷമുള്ള നമ്പറുകൾക്ക് മുൻഗണന നൽകുന്നു
+                amounts = re.findall(r'(?:₹|Rs|INR|Total|Paid)\s*[:]*\s*([\d,]+\.?\d*)', full_text, re.IGNORECASE)
                 
-                for i, text in enumerate(result):
-                    # ചിഹ്നങ്ങളും കോമകളും ഒഴിവാക്കുന്നു
-                    clean_text = text.replace('₹', '').replace(',', '').replace('?', '').strip()
-                    num_match = re.search(r'([\d]+\.?[\d]*)', clean_text)
-                    if num_match:
-                        try: all_numbers.append(float(num_match.group(1)))
-                        except: pass
-                    
-                    # "Paid to" എന്നതിന് ശേഷമുള്ള പേര് എടുക്കുന്നു
-                    if "Paid to" in text or "To" in text:
-                        if i + 1 < len(result): suggested_it = result[i+1]
+                if amounts:
+                    # 1 ലക്ഷത്തിന് താഴെയുള്ള ഏറ്റവും വലിയ തുക കണ്ടെത്തുന്നു
+                    possible_amounts = [float(a.replace(',', '')) for a in amounts if float(a.replace(',', '')) < 100000]
+                    suggested_am = max(possible_amounts) if possible_amounts else 0.0
+                else:
+                    # ചിഹ്നങ്ങൾ ഇല്ലെങ്കിൽ നമ്പറുകൾ മാത്രം നോക്കുന്നു (ID ഒഴിവാക്കാൻ)
+                    numbers = []
+                    for t in result:
+                        clean = t.replace(',', '').replace('.', '').strip()
+                        if clean.isdigit():
+                            try: numbers.append(float(t.replace(',', '')))
+                            except: pass
+                    # 1 ലക്ഷത്തിന് താഴെയുള്ള വലിയ സംഖ്യ എടുക്കുന്നു
+                    valid_amounts = [n for n in numbers if n < 100000]
+                    suggested_am = max(valid_amounts) if valid_amounts else 0.0
 
-                suggested_am = max(all_numbers) if all_numbers else 0.0
+                # 2. ഐറ്റം കണ്ടെത്തുന്നു (Name/Merchant Detection)
+                suggested_it = "Bill Entry"
+                for i, text in enumerate(result):
+                    if any(x in text for x in ["To", "Paid to", "Transfer to"]):
+                        if i + 1 < len(result):
+                            suggested_it = result[i+1]
+                            break
 
             with st.form("scan_save"):
                 it = st.text_input("Item", value=suggested_it)
