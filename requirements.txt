@@ -11,12 +11,3 @@ openpyxl
 xlsxwriter
 kaleido
 scikit-learn
-streamlit
-pandas
-requests
-plotly
-streamlit-mic-recorder
-pytesseract
-Pillow
-easyocr
-opencv-python-headless
