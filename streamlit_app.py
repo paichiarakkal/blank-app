@@ -16,12 +16,12 @@ CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRccfZch3jSdHqrScpqsR
 FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh77RnJKWc2-uqAM0TPNG3Q5A/formResponse"
 USERS = {"faisal": "faisal123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI Home Finance v28", layout="wide")
+st.set_page_config(page_title="PAICHI Home Finance v30", layout="wide")
 
 if 'auth' not in st.session_state: st.session_state.auth = False
 if 'page' not in st.session_state: st.session_state.page = "🏠 Dashboard"
 
-# OCR Reader Initialize (EasyOCR)
+# EasyOCR Reader Initialize
 @st.cache_resource
 def get_ocr_reader():
     return easyocr.Reader(['en'])
@@ -34,7 +34,6 @@ st.markdown("""
     .stApp { background: linear-gradient(135deg, #BF953F, #FCF6BA, #AA771C); color: #000; }
     section[data-testid="stSidebar"] { background-color: #0f172a !important; min-width: 300px !important; }
     
-    /* 3x3 Grid Buttons */
     div.stButton > button {
         border-radius: 20px !important;
         width: 85px !important;
@@ -109,22 +108,39 @@ else:
             img = Image.open(file)
             st.image(img, width=300)
             
-            # Image to Text
             with st.spinner('ബില്ല് സ്കാൻ ചെയ്യുന്നു...'):
                 result = reader.readtext(np.array(img), detail=0)
-                full_text = " ".join(result)
                 
-                # Finding Amount
-                amounts = re.findall(r'(?:Total|INR|Rs|₹|Paid)\s*[:]*\s*([\d,]+\.?\d*)', full_text, re.IGNORECASE)
-                suggested_am = float(amounts[-1].replace(',', '')) if amounts else 0.0
-                suggested_it = result[0] if result else "Bill Entry"
+                # തുകയും പേരും കണ്ടുപിടിക്കുന്നു
+                all_numbers = []
+                suggested_it = "Bill Entry"
+                
+                for i, text in enumerate(result):
+                    # ചിഹ്നങ്ങളും കോമകളും ഒഴിവാക്കുന്നു
+                    clean_text = text.replace('₹', '').replace(',', '').replace('?', '').strip()
+                    num_match = re.search(r'([\d]+\.?[\d]*)', clean_text)
+                    if num_match:
+                        try: all_numbers.append(float(num_match.group(1)))
+                        except: pass
+                    
+                    # "Paid to" എന്നതിന് ശേഷമുള്ള പേര് എടുക്കുന്നു
+                    if "Paid to" in text or "To" in text:
+                        if i + 1 < len(result): suggested_it = result[i+1]
+
+                suggested_am = max(all_numbers) if all_numbers else 0.0
 
             with st.form("scan_save"):
                 it = st.text_input("Item", value=suggested_it)
-                am = st.number_input("Amount", value=suggested_am)
+                am = st.number_input("Amount", value=float(suggested_am))
                 if st.form_submit_button("CONFIRM & SAVE"):
-                    requests.post(FORM_API, data={"entry.1044099436": datetime.now().date(), "entry.2013476337": f"[Scan] {it}", "entry.1460982454": am, "entry.1221658767": 0})
-                    st.success("സേവ് ചെയ്തു! ✅")
+                    requests.post(FORM_API, data={
+                        "entry.1044099436": datetime.now().date(), 
+                        "entry.2013476337": f"[Scan] {it}", 
+                        "entry.1460982454": am, 
+                        "entry.1221658767": 0
+                    })
+                    st.success("വിജയകരമായി സേവ് ചെയ്തു! ✅")
+                    st.cache_data.clear()
 
     elif "Entry" in page:
         st.title("💰 Add Entry")
@@ -136,6 +152,7 @@ else:
                 d, c = (am, 0) if ty == "Debit" else (0, am)
                 requests.post(FORM_API, data={"entry.1044099436": datetime.now().date(), "entry.2013476337": it, "entry.1460982454": d, "entry.1221658767": c})
                 st.success("Saved!")
+                st.cache_data.clear()
 
     elif "Report" in page:
         st.title("📊 Analysis")
