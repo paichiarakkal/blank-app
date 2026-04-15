@@ -6,7 +6,7 @@ import random
 import plotly.express as px
 from streamlit_mic_recorder import speech_to_text
 
-# 1. ലോഗിൻ വിവരങ്ങൾ (ഇവിടെ പുതിയ മെമ്പർമാരെ ആഡ് ചെയ്യാം)
+# 1. ലോഗിൻ വിവരങ്ങൾ
 USERS = {
     "faisal": {"pw": "faisal123", "role": "admin"},
     "shabana": {"pw": "shabana123", "role": "user"},
@@ -18,30 +18,42 @@ FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh7
 
 st.set_page_config(page_title="PAICHI Family Finance", layout="wide")
 
-# സെഷൻ സ്റ്റേറ്റ്
 if 'auth' not in st.session_state: st.session_state.auth = False
 
-# --- 🎨 THEME CSS ---
+# --- 🎨 ലോഗോകളും ഫോർക്ക് ചിഹ്നങ്ങളും ഒഴിവാക്കാനുള്ള CSS ---
 st.markdown("""
     <style>
+    /* മുകളിലെ Fork, GitHub ഐക്കണുകൾ മറയ്ക്കാൻ */
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    
+    /* താഴെ കാണുന്ന Streamlit ലോഗോ (Emblem) ഒഴിവാക്കാൻ */
+    .viewerBadge_container__1QS1n {display: none !important;}
+    .stDeployButton {display: none !important;}
+    
+    /* നിങ്ങളുടെ പഴയ ഡിസൈൻ സെറ്റിംഗ്സ് */
     .stApp { background: linear-gradient(135deg, #BF953F, #FCF6BA, #AA771C); color: #000; }
     .balance-box { background: #000; color: #00FF00; padding: 25px; border-radius: 15px; text-align: center; font-size: 30px; font-weight: bold; border: 3px solid #FFD700; }
     h1, h2, h3, label, p { color: black !important; font-weight: bold !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 🔐 LOGIN ---
+# --- 🔐 LOGIN SECTION ---
 if not st.session_state.auth:
     st.title("🔐 FAMILY LOGIN")
-    u = st.text_input("Username").lower()
-    p = st.text_input("Password", type="password")
+    u_raw = st.text_input("Username")
+    p_raw = st.text_input("Password", type="password")
+    
     if st.button("LOGIN"):
-        if u in USERS and USERS[u]["pw"] == p:
+        u_clean = u_raw.lower().strip()
+        if u_clean in USERS and USERS[u_clean]["pw"] == p_raw:
             st.session_state.auth = True
-            st.session_state.user = u.capitalize()
-            st.session_state.role = USERS[u]["role"]
+            st.session_state.user = u_clean.capitalize()
+            st.session_state.role = USERS[u_clean]["role"]
             st.rerun()
-        else: st.error("Access Denied!")
+        else: 
+            st.error("Access Denied!")
 else:
     @st.cache_data(ttl=1)
     def load_data():
@@ -54,9 +66,8 @@ else:
         except: return None
 
     df = load_data()
-    st.sidebar.title(f"👤 {st.session_state.user} ({st.session_state.role})")
+    st.sidebar.title(f"👤 {st.session_state.user}")
     
-    # റോൾ അനുസരിച്ചുള്ള മെനു
     menu_options = ["💰 Add Entry"]
     if st.session_state.role == "admin":
         menu_options = ["🏠 Home Dashboard", "💰 Add Entry", "🔍 Search & View", "📊 Expense Report"]
@@ -67,51 +78,29 @@ else:
         st.session_state.auth = False
         st.rerun()
 
-    # --- 🏠 HOME DASHBOARD (Admin Only) ---
     if page == "🏠 Home Dashboard":
         st.title("Financial Overview")
         if df is not None:
             bal = df['Credit'].sum() - df['Debit'].sum()
             st.markdown(f'<div class="balance-box">Total Balance: ₹{bal:,.2f}</div>', unsafe_allow_html=True)
-            
-            st.subheader("Recent Activity")
             st.dataframe(df.iloc[::-1].head(10), use_container_width=True)
 
-    # --- 💰 ADD ENTRY (Everyone) ---
     elif page == "💰 Add Entry":
-        st.title("Add New Expense/Income")
+        st.title("Add New Entry")
         v = speech_to_text(language='ml', key='voice')
         with st.form("entry_form", clear_on_submit=True):
-            it = st.text_input("Item Description", value=v if v else "")
+            it = st.text_input("Item", value=v if v else "")
             am = st.number_input("Amount", value=None)
             ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
             if st.form_submit_button("SAVE DATA"):
                 if it and am:
                     d, c = (am, 0) if ty == "Debit" else (0, am)
-                    # ആര് ആഡ് ചെയ്തു എന്ന് മനസ്സിലാക്കാൻ പേര് ചേർക്കുന്നു
-                    user_tag = f"[{st.session_state.user}] {it}"
                     payload = {
                         "entry.1044099436": datetime.now().strftime("%Y-%m-%d"), 
-                        "entry.2013476337": user_tag, 
+                        "entry.2013476337": f"[{st.session_state.user}] {it}", 
                         "entry.1460982454": d, 
                         "entry.1221658767": c
                     }
                     requests.post(FORM_API, data=payload)
-                    st.success(f"Saved by {st.session_state.user}! ✅")
+                    st.success(f"Saved successfully! ✅")
                     st.cache_data.clear()
-
-    # --- 🔍 SEARCH (Admin Only) ---
-    elif page == "🔍 Search & View":
-        st.title("Search Records")
-        search = st.text_input("Search Item or User")
-        if df is not None:
-            filtered = df[df['Item'].str.contains(search, case=False, na=False)]
-            st.dataframe(filtered.iloc[::-1], use_container_width=True)
-
-    # --- 📊 REPORTS (Admin Only) ---
-    elif page == "📊 Expense Report":
-        st.title("Spending Analysis")
-        if df is not None:
-            sdf = df[df['Debit'] > 0].groupby('Item')['Debit'].sum().reset_index()
-            fig = px.pie(sdf, values='Debit', names='Item', hole=0.4)
-            st.plotly_chart(fig, use_container_width=True)
