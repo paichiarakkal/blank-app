@@ -5,48 +5,39 @@ from datetime import datetime
 import random
 import plotly.express as px
 from streamlit_mic_recorder import speech_to_text
-import io
 
-# 1. കോൺഫിഗറേഷൻ
+# 1. ക്രമീകരണങ്ങൾ
+USERS = {
+    "faisal": {"pw": "faisal123", "role": "admin"},
+    "shabana": {"pw": "shabana123", "role": "user"},
+    "admin": {"pw": "paichi786", "role": "admin"}
+}
+
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRccfZch3jSdHqrScpqsR_j3FSd70NbELC1j6_nPi-MQXdrhVr3BPcKoI1nub4mQql727pQRPWYk9C-/pub?gid=1583146028&single=true&output=csv"
 FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh77RnJKWc2-uqAM0TPNG3Q5A/formResponse"
-USERS = {"faisal": "faisal123", "admin": "paichi786"}
-HOUSE_GOAL = 5000000  # പുതിയ വീടിനായുള്ള ഏകദേശ ലക്ഷ്യം (നിങ്ങൾക്ക് മാറ്റാം)
 
-st.set_page_config(page_title="PAICHI Finance Pro", layout="wide")
+st.set_page_config(page_title="PAICHI Smart Finance", layout="wide")
 
-# സ്റ്റേറ്റ് മാനേജ്‌മെന്റ്
 if 'auth' not in st.session_state: st.session_state.auth = False
-if 'theme' not in st.session_state: st.session_state.theme = "Gold"
 
-# --- 🎨 THEME SELECTOR & CSS ---
-theme_choice = st.sidebar.selectbox("Choose Theme", ["Gold", "Dark", "Professional"])
-
-if theme_choice == "Gold":
-    bg, text, box = "linear-gradient(135deg, #BF953F, #FCF6BA, #AA771C)", "#000", "rgba(0,0,0,0.85)"
-elif theme_choice == "Dark":
-    bg, text, box = "#121212", "#FFF", "#1E1E1E"
-else:
-    bg, text, box = "#f0f2f6", "#333", "#FFF"
-
-st.markdown(f"""
+# --- 🎨 THEME & STYLE ---
+st.markdown("""
     <style>
-    .stApp {{ background: {bg}; color: {text}; }}
-    .balance-box {{ background: #000; color: #00FF00; padding: 25px; border-radius: 15px; text-align: center; font-size: 30px; font-weight: bold; border: 3px solid #FFD700; margin-bottom: 20px; }}
-    .goal-box {{ background: {box}; padding: 20px; border-radius: 15px; border: 1px solid #FFD700; margin-top: 10px; color: {text}; }}
-    h1, h2, h3, label, p {{ color: {text} !important; }}
-    .stDataFrame {{ background: white; border-radius: 10px; }}
+    .stApp { background: linear-gradient(135deg, #BF953F, #FCF6BA, #AA771C); color: #000; }
+    .balance-box { background: #000; color: #00FF00; padding: 25px; border-radius: 15px; text-align: center; font-size: 30px; font-weight: bold; border: 3px solid #FFD700; }
+    .quick-btn { margin: 5px; border-radius: 10px; }
+    h1, h2, h3, label, p { color: black !important; font-weight: bold !important; }
     </style>
     """, unsafe_allow_html=True)
 
 # --- 🔐 LOGIN ---
 if not st.session_state.auth:
-    st.title("🔐 PAICHI FINANCE LOGIN")
+    st.title("🔐 PAICHI FAMILY LOGIN")
     u = st.text_input("Username").lower()
     p = st.text_input("Password", type="password")
     if st.button("LOGIN"):
-        if USERS.get(u) == p:
-            st.session_state.auth, st.session_state.user = True, u.capitalize()
+        if u in USERS and USERS[u]["pw"] == p:
+            st.session_state.auth, st.session_state.user, st.session_state.role = True, u.capitalize(), USERS[u]["role"]
             st.rerun()
         else: st.error("Access Denied!")
 else:
@@ -62,59 +53,69 @@ else:
 
     df = load_data()
     st.sidebar.title(f"👤 {st.session_state.user}")
-    page = st.sidebar.radio("Menu", ["🏠 Home & Goals", "💰 Add Entry", "🔍 Search & Filter", "🤝 Debt Tracker", "📊 Expense Report"])
     
-    if st.sidebar.button("Log Out"): 
-        st.session_state.auth = False
-        st.rerun()
+    pages = ["💰 Add Entry"]
+    if st.session_state.role == "admin":
+        pages = ["🏠 Dashboard", "💰 Add Entry", "🔍 Search & History", "📊 Analysis"]
+    
+    page = st.sidebar.radio("Go to", pages)
 
-    # --- 🏠 HOME & GOALS ---
-    if page == "🏠 Home & Goals":
-        st.title("Financial Dashboard")
+    # --- 🏠 DASHBOARD ---
+    if page == "🏠 Dashboard":
+        st.title("Financial Summary")
         if df is not None:
             bal = df['Credit'].sum() - df['Debit'].sum()
-            st.markdown(f'<div class="balance-box">കൈവശമുള്ള തുക: ₹{bal:,.2f}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="balance-box">Total Balance: ₹{bal:,.2f}</div>', unsafe_allow_html=True)
             
-            # 🏠 HOUSE GOAL TRACKER
-            st.subheader("🏗️ New House Goal")
-            saved_for_house = bal # തൽക്കാലം കൈവശമുള്ള തുക വീടിനായി കരുതുന്നു
-            progress = min(saved_for_house / HOUSE_GOAL, 1.0)
-            
-            st.markdown('<div class="goal-box">', unsafe_allow_html=True)
-            st.write(f"ലക്ഷ്യം: ₹{HOUSE_GOAL:,.2f}")
-            st.progress(progress)
-            st.write(f"പൂർത്തിയായത്: {progress*100:.2f}%")
-            st.markdown('</div>', unsafe_allow_html=True)
+            # Comparison Logic
+            st.subheader("Monthly Comparison")
+            df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+            curr_month = datetime.now().month
+            this_month_exp = df[df['Date'].dt.month == curr_month]['Debit'].sum()
+            st.metric("This Month Expenses", f"₹{this_month_exp:,.2f}")
 
     # --- 💰 ADD ENTRY ---
     elif page == "💰 Add Entry":
         st.title("New Entry")
+        
+        # Quick Buttons
+        st.write("Quick Add:")
+        col1, col2, col3, col4 = st.columns(4)
+        q_item, q_amt = "", None
+        if col1.button("☕ Tea (10)"): q_item, q_amt = "Tea", 10
+        if col2.button("⛽ Petrol (500)"): q_item, q_amt = "Petrol", 500
+        if col3.button("🥛 Milk (30)"): q_item, q_amt = "Milk", 30
+        if col4.button("🏠 Rent"): q_item, q_amt = "House Rent", None
+
         v = speech_to_text(language='ml', key='voice')
         with st.form("entry_form", clear_on_submit=True):
-            it = st.text_input("Item", value=v if v else "")
-            am = st.number_input("Amount", value=None)
+            it = st.text_input("Item", value=q_item if q_item else (v if v else ""))
+            am = st.number_input("Amount", value=q_amt if q_amt else None)
             ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
             if st.form_submit_button("SAVE"):
                 if it and am:
                     d, c = (am, 0) if ty == "Debit" else (0, am)
                     payload = {"entry.1044099436": datetime.now().date(), "entry.2013476337": f"[{st.session_state.user}] {it}", "entry.1460982454": d, "entry.1221658767": c}
                     requests.post(FORM_API, data=payload)
-                    st.success("Saved! ✅")
+                    st.success("Entry Saved! ✅")
                     st.cache_data.clear()
 
-    # --- 🔍 SEARCH & FILTER ---
-    elif page == "🔍 Search & Filter":
-        st.title("Find Records")
-        search = st.text_input("Search (പേര് അല്ലെങ്കിൽ സാധനം സന്ദർശിക്കുക)")
+    # --- 🔍 SEARCH ---
+    elif page == "🔍 Search & History":
+        st.title("Search History")
+        s = st.text_input("Search for items, users, or dates...")
         if df is not None:
-            filtered_df = df[df['Item'].str.contains(search, case=False, na=False)]
-            st.dataframe(filtered_df.iloc[::-1], use_container_width=True)
-            st.write(f"ആകെ ചിലവ് (ഈ സെർച്ച്): ₹{filtered_df['Debit'].sum():,.2f}")
+            res = df[df['Item'].str.contains(s, case=False, na=False)]
+            st.dataframe(res.iloc[::-1], use_container_width=True)
 
-    # --- 📊 EXPENSE REPORT ---
-    elif page == "📊 Expense Report":
-        st.title("Analysis")
+    # --- 📊 ANALYSIS ---
+    elif page == "📊 Analysis":
+        st.title("Expense Charts")
         if df is not None:
-            sdf = df[df['Debit'] > 0].groupby('Item')['Debit'].sum().reset_index()
-            fig = px.pie(sdf, values='Debit', names='Item', hole=0.4, title="Expense Distribution")
+            chart_data = df[df['Debit'] > 0].groupby('Item')['Debit'].sum().reset_index()
+            fig = px.bar(chart_data, x='Item', y='Debit', color='Item', title="Spending by Category")
             st.plotly_chart(fig, use_container_width=True)
+
+    if st.sidebar.button("Logout"):
+        st.session_state.auth = False
+        st.rerun()
