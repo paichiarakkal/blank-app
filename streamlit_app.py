@@ -20,22 +20,26 @@ st.set_page_config(page_title="PAICHI Family Finance", layout="wide")
 
 if 'auth' not in st.session_state: st.session_state.auth = False
 
-# --- 🎨 മെച്ചപ്പെടുത്തിയ CSS (എല്ലാം മറയ്ക്കാനും സൈഡ് ബാർ നിലനിർത്താനും) ---
+# --- 🎨 ഹെഡർ, ലോഗോ, എംബ്ലം എന്നിവ നീക്കം ചെയ്യാനുള്ള ശക്തമായ CSS ---
 st.markdown("""
     <style>
-    /* 1. മുകളിലെ Fork, GitHub, Menu എന്നിവ മറയ്ക്കാൻ */
-    header {visibility: hidden !important;}
-    #MainMenu {visibility: hidden !important;}
+    /* 1. മുകളിലെ Fork, GitHub, ഹെഡർ ബാർ എന്നിവ പൂർണ്ണമായും ഒഴിവാക്കാൻ */
+    header, [data-testid="stHeader"] {
+        display: none !important;
+        height: 0px !important;
+    }
     
-    /* 2. താഴെ കാണുന്ന Streamlit Badge (Emblem) മറയ്ക്കാൻ - പുതിയ രീതി */
-    footer {visibility: hidden !important;}
-    .viewerBadge_container__1QS1n {display: none !important;}
-    div[data-testid="stStatusWidget"] {display: none !important;}
-    [data-testid="stDecoration"] {display: none !important;}
+    /* 2. താഴെയുള്ള Streamlit എംബ്ലവും ബാഡ്ജും ഒഴിവാക്കാൻ */
+    footer {display: none !important;}
+    .viewerBadge_container__1QS1n, [data-testid="stStatusWidget"] {
+        display: none !important;
+    }
+    #MainMenu {visibility: hidden;}
 
-    /* 3. സൈഡ് ബാർ ഡിസൈൻ (ഇത് മറയ്ക്കാൻ പാടില്ല) */
+    /* 3. സൈഡ് ബാർ കൃത്യമായി കാണാൻ (ഇത് മറയ്ക്കാൻ പാടില്ല) */
     [data-testid="stSidebar"] {
         background-color: rgba(255, 255, 255, 0.1);
+        top: 0px !important;
     }
 
     /* 4. ബാക്ക്ഗ്രൗണ്ട് തീം */
@@ -44,6 +48,7 @@ st.markdown("""
         color: #000; 
     }
     
+    /* തുക കാണിക്കുന്ന ബോക്സ് */
     .balance-box { 
         background: #000; 
         color: #00FF00; 
@@ -81,7 +86,7 @@ else:
     @st.cache_data(ttl=1)
     def load_data():
         try:
-            # റാൻഡം നമ്പർ ചേർക്കുന്നത് ഗൂഗിൾ ഷീറ്റ് ഉടൻ അപ്‌ഡേറ്റ് ആകാൻ സഹായിക്കും
+            # പുതിയ ഡാറ്റ ഉടൻ വരാൻ random string ഉപയോഗിക്കുന്നു
             df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,9999)}")
             df.columns = df.columns.str.strip()
             for c in ['Debit', 'Credit']:
@@ -92,9 +97,8 @@ else:
 
     df = load_data()
     
-    # സൈഡ് ബാറിലെ പേര്
+    # സൈഡ് ബാറിലെ യൂസർ വിവരങ്ങൾ
     st.sidebar.markdown(f"### 👤 {st.session_state.user}")
-    st.sidebar.write(f"Role: {st.session_state.role}")
     
     menu_options = ["💰 Add Entry"]
     if st.session_state.role == "admin":
@@ -106,11 +110,11 @@ else:
         st.session_state.auth = False
         st.rerun()
 
-    # --- CONTENT PAGES ---
+    # --- താളുകൾ (Pages) ---
     if page == "🏠 Home Dashboard":
         st.title("Financial Overview")
         if df is not None:
-            # വരുമാനവും ചിലവും കണക്കാക്കുന്നു
+            # ബാലൻസ് കണക്കാക്കുന്നു
             bal = df['Credit'].sum() - df['Debit'].sum()
             st.markdown(f'<div class="balance-box">Total Balance: ₹{bal:,.2f}</div>', unsafe_allow_html=True)
             st.dataframe(df.iloc[::-1].head(10), use_container_width=True)
