@@ -1,185 +1,96 @@
 import streamlit as st
 import pandas as pd
-import requests
-from datetime import datetime
 import yfinance as yf
-import random
+import numpy as np
 import os
-from streamlit_mic_recorder import speech_to_text
-from streamlit_autorefresh import st_autorefresh
+from datetime import datetime
 
-# 1. ലോഗിൻ & ലിങ്കുകൾ
-USERS = {
-    "faisal": {"pw": "faisal123", "role": "admin"},
-    "shabana": {"pw": "shabana123", "role": "user"},
-    "admin": {"pw": "paichi786", "role": "admin"}
-}
-
-CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRccfZch3jSdHqrScpqsR_j3FSd70NbELC1j6_nPi-MQXdrhVr3BPcKoI1nub4mQql727pQRPWYk9C-/pub?gid=1583146028&single=true&output=csv"
-FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh77RnJKWc2-uqAM0TPNG3Q5A/formResponse"
-TRADE_FILE = 'trade_journal.csv'
-
-st.set_page_config(page_title="PAICHI All-in-One Finance", layout="wide")
-
-# --- 🎨 AI & Golden Theme Design ---
-st.markdown("""
-<style>
-    .stApp { 
-        background: linear-gradient(135deg, #BF953F, #FCF6BA, #AA771C); 
-        color: #000; 
-    }
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #0f172a, #1e293b) !important;
-        border-right: 2px solid #FFD700;
-    }
-    [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p, [data-testid="stSidebar"] h3 {
-        color: #e2e8f0 !important;
-    }
-    .stButton>button {
-        border-radius: 10px;
-        background: #000 !important;
-        color: #FFD700 !important;
-        border: 1px solid #FFD700 !important;
-        box-shadow: 0px 0px 10px rgba(255, 215, 0, 0.3);
-    }
-    .balance-box { 
-        background: rgba(0, 0, 0, 0.9); 
-        color: #00FF00; 
-        padding: 20px; 
-        border-radius: 15px; 
-        text-align: center; 
-        font-size: 24px; 
-        font-weight: bold; 
-        border: 2px solid #FFD700; 
-        box-shadow: 0px 4px 15px rgba(0,0,0,0.5);
-    }
-    .info-box { 
-        background-color: rgba(255, 255, 255, 0.1); 
-        padding: 10px; 
-        border-radius: 8px; 
-        color: #FFD700 !important; 
-        text-align: center; 
-        border: 1px solid #FFD700; 
-        margin-bottom: 5px; 
-    }
-    h1, h2, h3, label { color: black !important; font-weight: bold !important; }
-</style>
-""", unsafe_allow_html=True)
-
-st_autorefresh(interval=30000, key="paichi_hub_refresh")
-
-if 'auth' not in st.session_state: st.session_state.auth = False
-
-def get_live_price(ticker):
+# --- 🚀 ADVANCED AI TRADING ENGINE ---
+def get_advanced_ai_advice(ticker):
     try:
-        data = yf.Ticker(ticker).history(period='1d', interval='1m')
-        return data['Close'].iloc[-1]
-    except: return 0.0
+        # 15 മിനിറ്റ് ചാർട്ടിലെ ഡാറ്റ എടുക്കുന്നു
+        data = yf.Ticker(ticker).history(period='5d', interval='15m')
+        if data.empty: return None
 
-# --- 🔐 ലോഗിൻ ---
-if not st.session_state.auth:
-    st.title("🔐 PAICHI FINANCE HUB LOGIN")
-    u_raw = st.text_input("Username").lower().strip()
-    p_raw = st.text_input("Password", type="password")
-    if st.button("LOGIN"):
-        if u_raw in USERS and USERS[u_raw]["pw"] == p_raw:
-            st.session_state.auth, st.session_state.user, st.session_state.role = True, u_raw.capitalize(), USERS[u_raw]["role"]
-            st.rerun()
-        else: st.error("Access Denied!")
-else:
-    # --- 👤 സൈഡ് ബാർ (AI Style) ---
-    with st.sidebar:
-        st.markdown(f"### 👤 {st.session_state.user}")
+        # 1. RSI (Relative Strength Index)
+        delta = data['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs.iloc[-1]))
+
+        # 2. 20 EMA
+        ema_20 = data['Close'].ewm(span=20, adjust=False).mean().iloc[-1]
+        current_price = data['Close'].iloc[-1]
+
+        # 3. VWAP (Volume Weighted Average Price)
+        data['tp'] = (data['High'] + data['Low'] + data['Close']) / 3
+        data['tpv'] = data['tp'] * data['Volume']
+        vwap = data['tpv'].sum() / data['Volume'].sum()
+
+        # 4. MACD
+        exp1 = data['Close'].ewm(span=12, adjust=False).mean()
+        exp2 = data['Close'].ewm(span=26, adjust=False).mean()
+        macd = exp1 - exp2
+        signal_line = macd.ewm(span=9, adjust=False).mean()
+        macd_val = macd.iloc[-1]
+        sig_val = signal_line.iloc[-1]
+
+        # 5. Supertrend (Simplified Logic)
+        data['tr'] = np.maximum(data['High'] - data['Low'], 
+                     np.maximum(abs(data['High'] - data['Close'].shift()), 
+                     abs(data['Low'] - data['Close'].shift())))
+        atr = data['tr'].rolling(window=10).mean().iloc[-1]
+        st_val = ((data['High'].iloc[-1] + data['Low'].iloc[-1]) / 2) - (3 * atr)
+
+        # --- AI DECISION LOGIC (SCORING) ---
+        score = 0
+        details = []
+
+        # RSI Analysis
+        if rsi > 70: details.append("⚠️ RSI High (Overbought)"); score -= 1
+        elif rsi < 30: details.append("✅ RSI Low (Oversold)"); score += 1
         
-        # ഫൈസലിന് (Admin) മാത്രം ലൈവ് മാർക്കറ്റ് റേറ്റുകൾ കാണിക്കുന്നു
-        if st.session_state.role == "admin":
-            st.write("📊 **Live Market**")
-            ex_rate = get_live_price("AEDINR=X")
-            crude = get_live_price("CL=F")
-            nifty = get_live_price("^NSEI")
-            
-            st.markdown(f'<div class="info-box">AED/INR: ₹{ex_rate:.2f}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="info-box">Crude Oil: ${crude:.2f}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="info-box">Nifty 50: {nifty:,.1f}</div>', unsafe_allow_html=True)
-            st.divider()
-        
-        # മെനു
-        if st.session_state.role == "admin":
-            menu = ["🏠 Dashboard", "💰 Add Entry", "📈 Trading Journal", "🔍 Search & View"]
-        else:
-            menu = ["💰 Add Entry"] # ഷബാനയ്ക്ക് ഇത് മാത്രമേ കാണിക്കൂ
-        
-        page = st.radio("Menu", menu)
-        
-        st.divider()
-        if st.button("Log Out"):
-            st.session_state.auth = False
-            st.rerun()
-        st.markdown("[💬 Contact on WhatsApp](https://wa.me/918714752210)")
+        # Trend Analysis (EMA & VWAP)
+        if current_price > ema_20 and current_price > vwap:
+            details.append("📈 Bullish: Price above EMA & VWAP"); score += 2
+        elif current_price < ema_20 and current_price < vwap:
+            details.append("📉 Bearish: Price below EMA & VWAP"); score -= 2
 
-    # --- 🏠 DASHBOARD ---
-    if page == "🏠 Dashboard":
-        st.title(f"Welcome, {st.session_state.user}!")
-        col1, col2 = st.columns(2)
-        try:
-            df_exp = pd.read_csv(f"{CSV_URL}&r={random.randint(1,9999)}")
-            df_exp.columns = df_exp.columns.str.strip()
-            bal = pd.to_numeric(df_exp['Credit'], errors='coerce').sum() - pd.to_numeric(df_exp['Debit'], errors='coerce').sum()
-            col1.markdown(f'<div class="balance-box">Family Balance<br>₹{bal:,.2f}</div>', unsafe_allow_html=True)
-        except: col1.error("Sheet Error")
+        # MACD Analysis
+        if macd_val > sig_val: details.append("🚀 MACD: Bullish Crossover"); score += 1
+        else: details.append("🔻 MACD: Bearish Crossover"); score -= 1
 
-        if os.path.exists(TRADE_FILE):
-            df_t = pd.read_csv(TRADE_FILE)
-            t_pnl = df_t['P&L'].sum()
-            col2.markdown(f'<div class="balance-box">Trading P&L<br>₹{t_pnl:,.2f}</div>', unsafe_allow_html=True)
-        
-        st.dataframe(df_exp.iloc[::-1].head(10), use_container_width=True)
+        # Final Advice Generation
+        if score >= 3: advice = "🔥 STRONG BUY: High probability trend!"
+        elif score >= 1: advice = "✅ BUY: Market is looking positive."
+        elif score <= -3: advice = "🚫 STRONG SELL: High risk, avoid long!"
+        elif score <= -1: advice = "❌ SELL: Weakness detected."
+        else: advice = "⏳ NEUTRAL: Wait for a clear signal."
 
-    # --- 💰 ADD ENTRY ---
-    elif page == "💰 Add Entry":
-        st.title("Add New Transaction")
-        v = speech_to_text(language='ml', key='voice_exp')
-        with st.form("exp_form", clear_on_submit=True):
-            it = st.text_input("Item Description", value=v if v else "")
-            am = st.number_input("Amount (₹)", value=None)
-            ty = st.radio("Entry Type", ["Debit (Expense)", "Credit (Income)"], horizontal=True)
-            if st.form_submit_button("SAVE TO SHEET"):
-                if it and am:
-                    d, c = (am, 0) if "Debit" in ty else (0, am)
-                    payload = {"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": f"[{st.session_state.user}] {it}", "entry.1460982454": d, "entry.1221658767": c}
-                    requests.post(FORM_API, data=payload)
-                    st.success("Saved! ✅")
+        return {"price": current_price, "rsi": rsi, "vwap": vwap, "advice": advice, "details": details}
+    except: return None
 
-    # --- 📈 TRADING JOURNAL ---
-    elif page == "📈 Trading Journal":
-        st.title("Option Trading Log")
-        with st.form("trade_form", clear_on_submit=True):
-            col1, col2 = st.columns(2)
-            idx = col1.selectbox("Asset", ["NIFTY", "BANKNIFTY", "CRUDE OIL"])
-            stk = col2.text_input("Strike", placeholder="Ex: 22500 CE")
-            e_p = col1.number_input("Entry Price")
-            ex_p = col2.number_input("Exit Price")
-            q = col1.number_input("Qty", step=1)
-            mood = col2.selectbox("Mood", ["Calm", "Disciplined", "Fear", "Greedy"])
-            if st.form_submit_button("LOG TRADE"):
-                pnl = (ex_p - e_p) * q
-                df_new = pd.DataFrame([[datetime.now().strftime("%Y-%m-%d %H:%M"), f"{idx} {stk}", e_p, ex_p, q, pnl, mood]], columns=['Date', 'Item', 'Entry', 'Exit', 'Qty', 'P&L', 'Mood'])
-                if not os.path.isfile(TRADE_FILE): df_new.to_csv(TRADE_FILE, index=False)
-                else: df_new.to_csv(TRADE_FILE, mode='a', header=False, index=False)
-                st.success(f"Saved! P&L: ₹{pnl:,.2f}")
-
-    # --- 🔍 SEARCH & VIEW ---
-    elif page == "🔍 Search & View":
-        st.title("Full History")
-        search = st.text_input("Search items...")
-        try:
-            df_search = pd.read_csv(f"{CSV_URL}&r={random.randint(1,9999)}")
-            df_search.columns = df_search.columns.str.strip()
-            if search:
-                filtered = df_search[df_search['Item'].str.contains(search, case=False, na=False)]
-                st.dataframe(filtered.iloc[::-1], use_container_width=True)
-            else:
-                st.dataframe(df_search.iloc[::-1], use_container_width=True)
-        except: st.error("Data Load Error")
-
-st.markdown('<p style="text-align: center; color: #000; margin-top: 50px;">Created by <b>Faisal Arakkal</b></p>', unsafe_allow_html=True)
+# --- UI SECTION ---
+if st.session_state.get('auth') and st.session_state.role == "admin":
+    st.title("🤖 PAICHI AI PRO ADVISOR")
+    
+    selected_asset = st.selectbox("Analyze Asset", ["^NSEI", "^NSEBANK", "CL=F", "AEDINR=X"])
+    ai_res = get_advanced_ai_advice(selected_asset)
+    
+    if ai_res:
+        st.markdown(f"""
+        <div style="background: #0f172a; padding: 25px; border-radius: 20px; border: 2px solid #FFD700;">
+            <h1 style="color: #FFD700; font-size: 35px;">{ai_res['advice']}</h1>
+            <p style="color: #00f2fe; font-size: 20px;">Current Price: {ai_res['price']:,.2f}</p>
+            <hr style="border-color: #FFD700;">
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 10px;"><b>RSI:</b> {ai_res['rsi']:.2f}</div>
+                <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 10px;"><b>VWAP:</b> {ai_res['vwap']:,.2f}</div>
+            </div>
+            <h4 style="margin-top: 20px; color: #FFD700;">Technical Checklist:</h4>
+            <ul style="font-size: 16px;">
+                {"".join([f"<li>{d}</li>" for d in ai_res['details']])}
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
