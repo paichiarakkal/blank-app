@@ -20,35 +20,38 @@ st.set_page_config(page_title="PAICHI Family Finance", layout="wide")
 
 if 'auth' not in st.session_state: st.session_state.auth = False
 
-# --- 🎨 ഹെഡർ, ലോഗോ, എംബ്ലം എന്നിവ നീക്കം ചെയ്യാനുള്ള ശക്തമായ CSS ---
+# --- 🎨 ഹെഡർ, എംബ്ലം എന്നിവ പൂർണ്ണമായും ബ്ലോക്ക് ചെയ്യാനുള്ള ശക്തമായ CSS ---
 st.markdown("""
     <style>
-    /* 1. മുകളിലെ Fork, GitHub, ഹെഡർ ബാർ എന്നിവ പൂർണ്ണമായും ഒഴിവാക്കാൻ */
-    header, [data-testid="stHeader"] {
+    /* 1. മുകളിലെ മുഴുവൻ ബാറും ചിഹ്നങ്ങളും ഒഴിവാക്കാൻ */
+    [data-testid="stHeader"], header {
         display: none !important;
         height: 0px !important;
     }
     
-    /* 2. താഴെയുള്ള Streamlit എംബ്ലവും ബാഡ്ജും ഒഴിവാക്കാൻ */
+    /* 2. താഴെയുള്ള റെഡ് ക്രൗൺ (Emblem) ബാഡ്ജ് പൂർണ്ണമായും ഒഴിവാക്കാൻ */
     footer {display: none !important;}
-    .viewerBadge_container__1QS1n, [data-testid="stStatusWidget"] {
+    .viewerBadge_container__1QS1n, [data-testid="stStatusWidget"], .stDeployButton {
         display: none !important;
     }
-    #MainMenu {visibility: hidden;}
-
-    /* 3. സൈഡ് ബാർ കൃത്യമായി കാണാൻ (ഇത് മറയ്ക്കാൻ പാടില്ല) */
+    
+    /* 3. സൈഡ് ബാറിലെ മാറ്റങ്ങൾ */
     [data-testid="stSidebar"] {
-        background-color: rgba(255, 255, 255, 0.1);
-        top: 0px !important;
+        background-color: #1a1a1a !important; /* ഡാർക്ക് സൈഡ് ബാർ */
+        color: white !important;
+    }
+    
+    /* സൈഡ് ബാറിലെ ടെക്സ്റ്റ് വൈറ്റ് ആക്കാൻ */
+    [data-testid="stSidebar"] label, [data-testid="stSidebar"] p, [data-testid="stSidebar"] h3 {
+        color: white !important;
     }
 
-    /* 4. ബാക്ക്ഗ്രൗണ്ട് തീം */
+    /* 4. മെയിൻ ബോഡി ഡിസൈൻ */
     .stApp { 
         background: linear-gradient(135deg, #BF953F, #FCF6BA, #AA771C); 
         color: #000; 
     }
     
-    /* തുക കാണിക്കുന്ന ബോക്സ് */
     .balance-box { 
         background: #000; 
         color: #00FF00; 
@@ -67,56 +70,56 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 🔐 LOGIN SECTION ---
+# --- 🔐 LOGIN ---
 if not st.session_state.auth:
-    st.title("🔐 FAMILY LOGIN")
+    st.title("🔐 PAICHI FAMILY LOGIN")
     u_raw = st.text_input("Username")
     p_raw = st.text_input("Password", type="password")
-    
     if st.button("LOGIN"):
         u_clean = u_raw.lower().strip()
         if u_clean in USERS and USERS[u_clean]["pw"] == p_raw:
-            st.session_state.auth = True
-            st.session_state.user = u_clean.capitalize()
-            st.session_state.role = USERS[u_clean]["role"]
+            st.session_state.auth, st.session_state.user, st.session_state.role = True, u_clean.capitalize(), USERS[u_clean]["role"]
             st.rerun()
-        else: 
-            st.error("Access Denied!")
+        else: st.error("Access Denied!")
 else:
     @st.cache_data(ttl=1)
     def load_data():
         try:
-            # പുതിയ ഡാറ്റ ഉടൻ വരാൻ random string ഉപയോഗിക്കുന്നു
             df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,9999)}")
             df.columns = df.columns.str.strip()
             for c in ['Debit', 'Credit']:
-                if c in df.columns: 
-                    df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
+                if c in df.columns: df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
             return df
         except: return None
 
     df = load_data()
     
-    # സൈഡ് ബാറിലെ യൂസർ വിവരങ്ങൾ
-    st.sidebar.markdown(f"### 👤 {st.session_state.user}")
+    # --- 👤 സൈഡ് ബാർ ഡിസൈൻ ---
+    st.sidebar.markdown(f"""
+        <div style="background-color: #333; padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #FFD700;">
+            <h2 style="color: #FFD700 !important; margin: 0;">{st.session_state.user}</h2>
+            <p style="color: #bbb !important; margin: 0;">{st.session_state.role.upper()}</p>
+        </div>
+    """, unsafe_allow_html=True)
+    st.sidebar.markdown("---")
     
-    menu_options = ["💰 Add Entry"]
+    menu = ["💰 Add Entry"]
     if st.session_state.role == "admin":
-        menu_options = ["🏠 Home Dashboard", "💰 Add Entry", "🔍 Search & View", "📊 Expense Report"]
+        menu = ["🏠 Home Dashboard", "💰 Add Entry", "🔍 Search & View", "📊 Expense Report"]
     
-    page = st.sidebar.radio("Menu", menu_options)
+    page = st.sidebar.radio("Select Page", menu)
     
-    if st.sidebar.button("Log Out"): 
+    if st.sidebar.button("Logout"): 
         st.session_state.auth = False
         st.rerun()
 
-    # --- താളുകൾ (Pages) ---
+    # --- താളുകൾ ---
     if page == "🏠 Home Dashboard":
         st.title("Financial Overview")
         if df is not None:
-            # ബാലൻസ് കണക്കാക്കുന്നു
+            # നിലവിലെ ബാലൻസ് കണക്കാക്കുന്നു
             bal = df['Credit'].sum() - df['Debit'].sum()
-            st.markdown(f'<div class="balance-box">Total Balance: ₹{bal:,.2f}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="balance-box">ബാക്കി തുക: ₹{bal:,.2f}</div>', unsafe_allow_html=True)
             st.dataframe(df.iloc[::-1].head(10), use_container_width=True)
 
     elif page == "💰 Add Entry":
@@ -129,12 +132,8 @@ else:
             if st.form_submit_button("SAVE DATA"):
                 if it and am:
                     d, c = (am, 0) if ty == "Debit" else (0, am)
-                    payload = {
-                        "entry.1044099436": datetime.now().strftime("%Y-%m-%d"), 
-                        "entry.2013476337": f"[{st.session_state.user}] {it}", 
-                        "entry.1460982454": d, 
-                        "entry.1221658767": c
-                    }
+                    # എൻട്രി ഇടുന്നയാളുടെ പേര് ചേർക്കുന്നു
+                    payload = {"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": f"[{st.session_state.user}] {it}", "entry.1460982454": d, "entry.1221658767": c}
                     requests.post(FORM_API, data=payload)
-                    st.success(f"Saved successfully! ✅")
+                    st.success("വിജയകരമായി സേവ് ചെയ്തു! ✅")
                     st.cache_data.clear()
