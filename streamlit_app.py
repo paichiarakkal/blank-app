@@ -20,33 +20,33 @@ st.set_page_config(page_title="PAICHI Family Finance", layout="wide")
 
 if 'auth' not in st.session_state: st.session_state.auth = False
 
-# --- 🎨 ഹെഡർ, എംബ്ലം എന്നിവ പൂർണ്ണമായും ബ്ലോക്ക് ചെയ്യാനുള്ള ശക്തമായ CSS ---
+# --- 🎨 ഹെഡർ ചിഹ്നങ്ങൾ കളയാനും സൈഡ് ബാർ നിലനിർത്താനുമുള്ള CSS ---
 st.markdown("""
     <style>
-    /* 1. മുകളിലെ മുഴുവൻ ബാറും ചിഹ്നങ്ങളും ഒഴിവാക്കാൻ */
-    [data-testid="stHeader"], header {
+    /* 1. സൈഡ് ബാർ ബട്ടൺ നിലനിർത്തിക്കൊണ്ട് Fork/GitHub ചിഹ്നങ്ങൾ മാത്രം കളയാൻ */
+    [data-testid="stHeader"] {
+        background-color: rgba(0,0,0,0) !important;
+    }
+    
+    /* Fork, GitHub, Menu ബട്ടണുകൾ ഹൈഡ് ചെയ്യുന്നു */
+    button[title="View source"], 
+    .stAppDeployButton, 
+    #MainMenu {
         display: none !important;
-        height: 0px !important;
-    }
-    
-    /* 2. താഴെയുള്ള റെഡ് ക്രൗൺ (Emblem) ബാഡ്ജ് പൂർണ്ണമായും ഒഴിവാക്കാൻ */
-    footer {display: none !important;}
-    .viewerBadge_container__1QS1n, [data-testid="stStatusWidget"], .stDeployButton {
-        display: none !important;
-    }
-    
-    /* 3. സൈഡ് ബാറിലെ മാറ്റങ്ങൾ */
-    [data-testid="stSidebar"] {
-        background-color: #1a1a1a !important; /* ഡാർക്ക് സൈഡ് ബാർ */
-        color: white !important;
-    }
-    
-    /* സൈഡ് ബാറിലെ ടെക്സ്റ്റ് വൈറ്റ് ആക്കാൻ */
-    [data-testid="stSidebar"] label, [data-testid="stSidebar"] p, [data-testid="stSidebar"] h3 {
-        color: white !important;
     }
 
-    /* 4. മെയിൻ ബോഡി ഡിസൈൻ */
+    /* 2. താഴെയുള്ള റെഡ് ക്രൗൺ എംബ്ലം ഒഴിവാക്കാൻ */
+    footer {display: none !important;}
+    .viewerBadge_container__1QS1n, [data-testid="stStatusWidget"] {
+        display: none !important;
+    }
+
+    /* 3. കണ്ടന്റ് അല്പം താഴേക്ക് ഇറക്കി വെക്കാൻ (Padding) */
+    .block-container {
+        padding-top: 5rem !important;
+    }
+
+    /* 4. ബാക്ക്ഗ്രൗണ്ട് തീം */
     .stApp { 
         background: linear-gradient(135deg, #BF953F, #FCF6BA, #AA771C); 
         color: #000; 
@@ -94,30 +94,23 @@ else:
 
     df = load_data()
     
-    # --- 👤 സൈഡ് ബാർ ഡിസൈൻ ---
-    st.sidebar.markdown(f"""
-        <div style="background-color: #333; padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #FFD700;">
-            <h2 style="color: #FFD700 !important; margin: 0;">{st.session_state.user}</h2>
-            <p style="color: #bbb !important; margin: 0;">{st.session_state.role.upper()}</p>
-        </div>
-    """, unsafe_allow_html=True)
-    st.sidebar.markdown("---")
+    # സൈഡ് ബാറിലെ ഡിസൈൻ
+    st.sidebar.markdown(f"### 👤 {st.session_state.user}")
     
     menu = ["💰 Add Entry"]
     if st.session_state.role == "admin":
         menu = ["🏠 Home Dashboard", "💰 Add Entry", "🔍 Search & View", "📊 Expense Report"]
     
-    page = st.sidebar.radio("Select Page", menu)
+    page = st.sidebar.radio("Menu", menu)
     
     if st.sidebar.button("Logout"): 
         st.session_state.auth = False
         st.rerun()
 
-    # --- താളുകൾ ---
+    # --- Pages ---
     if page == "🏠 Home Dashboard":
         st.title("Financial Overview")
         if df is not None:
-            # നിലവിലെ ബാലൻസ് കണക്കാക്കുന്നു
             bal = df['Credit'].sum() - df['Debit'].sum()
             st.markdown(f'<div class="balance-box">ബാക്കി തുക: ₹{bal:,.2f}</div>', unsafe_allow_html=True)
             st.dataframe(df.iloc[::-1].head(10), use_container_width=True)
@@ -132,8 +125,7 @@ else:
             if st.form_submit_button("SAVE DATA"):
                 if it and am:
                     d, c = (am, 0) if ty == "Debit" else (0, am)
-                    # എൻട്രി ഇടുന്നയാളുടെ പേര് ചേർക്കുന്നു
                     payload = {"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": f"[{st.session_state.user}] {it}", "entry.1460982454": d, "entry.1221658767": c}
                     requests.post(FORM_API, data=payload)
-                    st.success("വിജയകരമായി സേവ് ചെയ്തു! ✅")
+                    st.success("സേവ് ചെയ്തു! ✅")
                     st.cache_data.clear()
