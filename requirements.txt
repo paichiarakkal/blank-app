@@ -1,9 +1,8 @@
 streamlit
 pandas
 requests
-easyocr
-opencv-python-headless
-Pillow
-numpy
-plotly
+yfinance
 streamlit-mic-recorder
+streamlit-autorefresh
+plotly
+Pillow
