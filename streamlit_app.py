@@ -5,151 +5,103 @@ from datetime import datetime
 import yfinance as yf
 import numpy as np
 import random
-import os
 from streamlit_mic_recorder import speech_to_text
 from streamlit_autorefresh import st_autorefresh
 
-# --- 1. CONFIG & AUTH ---
-USERS = {
-    "faisal": {"pw": "faisal123", "role": "admin"},
-    "shabana": {"pw": "shabana123", "role": "user"}
-}
-
+# --- 1. CONFIG ---
+USERS = {"faisal": {"pw": "faisal123", "role": "admin"}}
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRccfZch3jSdHqrScpqsR_j3FSd70NbELC1j6_nPi-MQXdrhVr3BPcKoI1nub4mQql727pQRPWYk9C-/pub?gid=1583146028&single=true&output=csv"
 FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh77RnJKWc2-uqAM0TPNG3Q5A/formResponse"
 
-st.set_page_config(page_title="PAICHI AI PRO MCX", layout="wide")
+st.set_page_config(page_title="PAICHI AI PRO", layout="wide")
 
-# --- 2. 🎨 AI TRADER THEME ---
-st.markdown("""
-<style>
-    .stApp { background: #0a0e14; color: #ffffff; }
-    [data-testid="stSidebar"] { background: #000000 !important; border-right: 2px solid #FFD700; }
-    .ai-card { background: #161b22; padding: 25px; border-radius: 15px; border: 1px solid #30363d; box-shadow: 0 4px 20px rgba(0,0,0,0.8); }
-    .price-box { font-size: 60px; font-weight: bold; color: #FFD700; margin: 5px 0; }
-    .mcx-label { color: #00FF00; font-size: 18px; font-weight: bold; background: rgba(0,255,0,0.1); padding: 5px 10px; border-radius: 5px; }
-    .signal-badge { padding: 15px; border-radius: 10px; font-size: 32px; font-weight: bold; text-align: center; margin-bottom: 20px; }
-    li { font-size: 18px; margin-bottom: 8px; }
-</style>
-""", unsafe_allow_html=True)
+# 🚀 3 സെക്കൻഡിൽ ഓട്ടോ റിഫ്രഷ് (ലൈവ് ഫീൽ കിട്ടാൻ)
+st_autorefresh(interval=3000, key="paichi_ultra_live")
 
-# 🚀 ഓരോ 3 സെക്കൻഡിലും ലൈവ് പ്രൈസ് പുതുക്കാൻ (3000 മില്ലി സെക്കൻഡ്)
-st_autorefresh(interval=3000, key="paichi_live_tick")
-
-# --- 3. 🤖 MCX AI ENGINE ---
-def get_ai_analysis(ticker, multiplier):
+# --- 2. 🤖 MCX ULTRA-FAST ENGINE ---
+def get_ai_analysis(multiplier):
     try:
-        # ഏറ്റവും പുതിയ ഡാറ്റ കിട്ടാൻ 1 മിനിറ്റ് ഇന്റർവെൽ ഉപയോഗിക്കുന്നു
+        ticker = "CL=F"
+        # 🎯 കൃത്യതയ്ക്കായി 1-minute ഇന്റർവെൽ ഉപയോഗിക്കുന്നു
         data = yf.Ticker(ticker).history(period='1d', interval='1m')
         if data.empty: return None
         
         curr_usd = data['Close'].iloc[-1]
+        final_price = curr_usd * multiplier
         
-        # MCX FUTURE CONVERSION
-        final_price = curr_usd * multiplier if ticker == "CL=F" else curr_usd
+        # ഇൻട്രാഡേ സിഗ്നലുകൾ (Upstox ചാർട്ടുമായി പൊരുത്തപ്പെടാൻ)
+        ema_fast = data['Close'].ewm(span=9).mean().iloc[-1]
+        ema_slow = data['Close'].ewm(span=21).mean().iloc[-1]
         
-        # Indicators
-        ema = data['Close'].ewm(span=20).mean().iloc[-1]
-        
-        # RSI
+        # RSI (14 period)
         delta = data['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rsi = 100 - (100 / (1 + (gain / loss).iloc[-1]))
 
-        # Logic for Signals
+        # 🔥 SIGNAL LOGIC
         score = 0
         details = []
-        if data['Close'].iloc[-1] > ema: 
-            details.append("🟢 Price > 20 EMA (Bullish Trend)")
+        
+        # Trend Logic (EMA Cross similar to SuperTrend)
+        if curr_usd > ema_fast: 
+            details.append("🟢 UpTrend (Price > EMA 9)")
             score += 1
         else: 
-            details.append("🔴 Price < 20 EMA (Bearish Trend)")
+            details.append("🔴 DownTrend (Price < EMA 9)")
             score -= 1
-        
-        if rsi > 55: 
-            details.append("⚡ Strong Bullish Momentum")
+            
+        # Momentum Logic
+        if rsi > 60: 
+            details.append("⚡ Strong Buy Momentum")
             score += 1
-        elif rsi < 45: 
-            details.append("❄️ Strong Bearish Pressure")
+        elif rsi < 40: 
+            details.append("❄️ Strong Sell Pressure")
             score -= 1
 
-        advice = "NEUTRAL ⏳"
-        color = "#808080"
-        if score >= 2: advice, color = "STRONG BUY 🔥", "#00FF00"
-        elif score == 1: advice, color = "BUY ✅", "#4CAF50"
-        elif score <= -2: advice, color = "STRONG SELL 🚫", "#FF0000"
-        elif score == -1: advice, color = "SELL ❌", "#F44336"
+        advice, color = ("STRONG BUY 🔥", "#00FF00") if score >= 2 else \
+                        ("BUY ✅", "#4CAF50") if score == 1 else \
+                        ("STRONG SELL 🚫", "#FF0000") if score <= -2 else \
+                        ("SELL ❌", "#F44336") if score == -1 else ("NEUTRAL ⏳", "#808080")
 
         return {"price": final_price, "rsi": rsi, "advice": advice, "color": color, "details": details}
     except: return None
 
-# --- 4. APP INTERFACE ---
+# --- 3. UI INTERFACE ---
 if 'auth' not in st.session_state: st.session_state.auth = False
 
 if not st.session_state.auth:
-    st.title("🔐 PAICHI AI TRADER LOGIN")
-    u = st.text_input("Username").strip()
-    p = st.text_input("Password", type="password")
+    st.title("🔐 LOGIN")
+    u = st.text_input("User")
+    p = st.text_input("Pass", type="password")
     if st.button("LOGIN"):
         if u.lower() in USERS and USERS[u.lower()]["pw"] == p:
-            st.session_state.auth, st.session_state.user = True, u.capitalize()
+            st.session_state.auth = True
             st.rerun()
 else:
     with st.sidebar:
-        st.header(f"👤 {st.session_state.user}")
-        
-        st.markdown("### ⚙️ Live Adjustment")
-        # അപ്സ്റ്റോക്സിലെ വിലയുമായി അഡ്ജസ്റ്റ് ചെയ്യാൻ ഫാക്ടർ ഇവിടെ മാറ്റാം
-        mcx_multiplier = st.number_input("Price Factor", min_value=50.0, max_value=150.0, value=96.5, step=0.1)
-        
-        page = st.radio("Menu", ["📊 AI Advisor", "💰 Add Expense", "🔍 History"])
+        st.header("👤 Faisal")
+        # വില അപ്സ്റ്റോക്സുമായി ഒത്തുപോകാൻ ഇത് അഡ്ജസ്റ്റ് ചെയ്യുക
+        f_val = st.number_input("Price Factor", value=96.2, step=0.1)
         if st.button("Logout"): st.session_state.auth = False; st.rerun()
 
-    if page == "📊 AI Advisor":
-        st.title("Live Pro Advisor (3s Sync)")
-        asset = st.selectbox("Market", ["MCX CRUDE OIL", "NIFTY 50 Spot"])
-        ticker = "CL=F" if asset == "MCX CRUDE OIL" else "^NSEI"
-        
-        res = get_ai_analysis(ticker, mcx_multiplier)
-        if res:
-            label = "MCX FUTURE (Adjustable)" if ticker == "CL=F" else "NIFTY SPOT"
-            
-            st.markdown(f"""
-            <div class="ai-card">
-                <div class="signal-badge" style="background: {res['color']}; color: white;">{res['advice']}</div>
-                <span class="mcx-label">{label}</span>
-                <div class="price-box">₹ {res['price']:,.2f}</div>
-                <p style="font-size: 20px;"><b>RSI:</b> {res['rsi']:.2f} | <b>Factor:</b> {mcx_multiplier}</p>
-                <hr style="border-color: #333;">
-                <ul style="list-style-type: none; padding-left: 0;">{"".join([f"<li>{d}</li>" for d in res['details']])}</ul>
+    res = get_ai_analysis(f_val)
+    if res:
+        st.markdown(f"""
+        <div style="background: #161b22; padding: 25px; border-radius: 15px; border: 2px solid {res['color']}; text-align: center;">
+            <div style="background: {res['color']}; color: white; padding: 10px; border-radius: 10px; font-size: 30px; font-weight: bold;">{res['advice']}</div>
+            <h1 style="font-size: 65px; color: #FFD700; margin: 15px 0;">₹ {res['price']:,.2f}</h1>
+            <p style="font-size: 22px; color: #aaa;">RSI: {res['rsi']:.2f} | Factor: {f_val}</p>
+            <hr style="border-color: #333;">
+            <div style="text-align: left; display: inline-block;">
+                {"".join([f"<p style='font-size: 18px;'>{d}</p>" for d in res['details']])}
             </div>
-            """, unsafe_allow_html=True)
-            
-        try:
-            df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
-            bal = pd.to_numeric(df['Credit'], errors='coerce').sum() - pd.to_numeric(df['Debit'], errors='coerce').sum()
-            st.success(f"Fund Balance: ₹{bal:,.2f}")
-        except: pass
+        </div>
+        """, unsafe_allow_html=True)
 
-    elif page == "💰 Add Expense":
-        st.title("Expense Entry")
-        v = speech_to_text(language='ml', key='ml_voice_v5')
-        with st.form("expense_form"):
-            it = st.text_input("Item", value=v if v else "")
-            am = st.number_input("Amount", value=None)
-            ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
-            if st.form_submit_button("SAVE"):
-                d, c = (am, 0) if ty == "Debit" else (0, am)
-                requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": f"[{st.session_state.user}] {it}", "entry.1460982454": d, "entry.1221658767": c})
-                st.balloons()
-                st.success("Success!")
-
-    elif page == "🔍 History":
-        st.title("Transaction History")
-        try:
-            dfh = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
-            st.dataframe(dfh.iloc[::-1], use_container_width=True)
-        except: st.error("No data found.")
-
-st.markdown("<p style='text-align:center; color: #444; margin-top: 30px;'>PAICHI AI HUB v3.2 | Real-Time Sync Enabled</p>", unsafe_allow_html=True)
+    # Fund Balance Quick View
+    try:
+        df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
+        bal = pd.to_numeric(df['Credit'], errors='coerce').sum() - pd.to_numeric(df['Debit'], errors='coerce').sum()
+        st.info(f"💰 Available Fund: ₹{bal:,.2f}")
+    except: pass
