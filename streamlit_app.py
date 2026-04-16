@@ -165,3 +165,57 @@ else:
         except: st.error("Error")
 
 st.markdown("<p style='text-align:center;'>Created by Faisal Arakkal</p>", unsafe_allow_html=True)
+# --- AI ENGINE UPDATE (MCX & IMPROVED SIGNALS) ---
+def get_advanced_ai_advice(ticker):
+    try:
+        data = yf.Ticker(ticker).history(period='5d', interval='15m')
+        if data.empty: return None
+
+        # RSI Calculation
+        delta = data['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rsi = 100 - (100 / (1 + (gain / loss).iloc[-1]))
+
+        # Price, EMA, VWAP
+        current_price = data['Close'].iloc[-1]
+        ema_20 = data['Close'].ewm(span=20, adjust=False).mean().iloc[-1]
+        data['tp'] = (data['High'] + data['Low'] + data['Close']) / 3
+        vwap = (data['tp'] * data['Volume']).sum() / data['Volume'].sum()
+
+        # MACD
+        exp1 = data['Close'].ewm(span=12, adjust=False).mean()
+        exp2 = data['Close'].ewm(span=26, adjust=False).mean()
+        macd = (exp1 - exp2).iloc[-1]
+        signal = (exp1 - exp2).ewm(span=9, adjust=False).mean().iloc[-1]
+
+        # Final Scoring & Signal Details
+        score = 0
+        details = []
+        
+        # 1. Trend Analysis
+        if current_price > ema_20: details.append("📈 Price above 20 EMA"); score += 1
+        else: details.append("📉 Price below 20 EMA"); score -= 1
+
+        # 2. Volume Analysis
+        if current_price > vwap: details.append("💎 Strong Volume (Above VWAP)"); score += 1
+        else: details.append("⚠️ Weak Volume (Below VWAP)"); score -= 1
+
+        # 3. Momentum Analysis
+        if macd > signal: details.append("🚀 MACD Bullish Crossover"); score += 1
+        else: details.append("🔻 MACD Bearish Crossover"); score -= 1
+
+        # 4. Strength Analysis
+        if rsi > 60: details.append("🔥 RSI High (Strong)"); score += 1
+        elif rsi < 40: details.append("❄️ RSI Low (Weak)"); score -= 1
+
+        # Decision Making
+        if score >= 2: advice = "🔥 STRONG BUY"
+        elif score == 1: advice = "✅ BUY"
+        elif score <= -2: advice = "🚫 STRONG SELL"
+        elif score == -1: advice = "❌ SELL"
+        else: advice = "⏳ NEUTRAL"
+
+        return {"price": current_price, "rsi": rsi, "advice": advice, "details": details}
+    except:
+        return None
