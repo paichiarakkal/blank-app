@@ -88,3 +88,4 @@ else:
         bal = pd.to_numeric(df['Credit'], errors='coerce').sum() - pd.to_numeric(df['Debit'], errors='coerce').sum()
         st.metric("Total Balance", f"₹{bal:,.2f}")
     except: pass
+        
