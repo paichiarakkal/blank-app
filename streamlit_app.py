@@ -17,7 +17,6 @@ USERS = {
 
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRccfZch3jSdHqrScpqsR_j3FSd70NbELC1j6_nPi-MQXdrhVr3BPcKoI1nub4mQql727pQRPWYk9C-/pub?gid=1583146028&single=true&output=csv"
 FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh77RnJKWc2-uqAM0TPNG3Q5A/formResponse"
-TRADE_FILE = 'trade_journal.csv'
 
 st.set_page_config(page_title="PAICHI AI PRO MCX", layout="wide")
 
@@ -30,41 +29,38 @@ st.markdown("""
     .price-box { font-size: 55px; font-weight: bold; color: #FFD700; margin: 10px 0; }
     .mcx-label { color: #00FF00; font-size: 18px; font-weight: bold; background: rgba(0,255,0,0.1); padding: 5px 10px; border-radius: 5px; }
     .signal-badge { padding: 15px; border-radius: 10px; font-size: 30px; font-weight: bold; text-align: center; margin-bottom: 20px; }
-    li { font-size: 18px; margin-bottom: 10px; }
+    .adj-box { background: #1e293b; padding: 10px; border-radius: 10px; border: 1px dashed #FFD700; margin-bottom: 15px; }
 </style>
 """, unsafe_allow_html=True)
 
 st_autorefresh(interval=60000, key="paichi_refresh")
 
 # --- 3. 🤖 MCX AI ENGINE ---
-def get_ai_analysis(ticker):
+def get_ai_analysis(ticker, multiplier):
     try:
-        # അന്താരാഷ്ട്ര ക്രൂഡ് ഓയിൽ ഡാറ്റ എടുക്കുന്നു
         data = yf.Ticker(ticker).history(period='5d', interval='15m')
         if data.empty: return None
         
         curr_usd = data['Close'].iloc[-1]
         
-        # MCX FUTURE CONVERSION (Upstox-ലെ ഏകദേശ വില വരാൻ 97.1 കൊണ്ട് ഗുണിക്കുന്നു)
-        final_price = curr_usd * 97.1 if ticker == "CL=F" else curr_usd
+        # MCX FUTURE CONVERSION (യൂസർ സെറ്റ് ചെയ്യുന്ന മൾട്ടിപ്ലയർ ഉപയോഗിക്കുന്നു)
+        final_price = curr_usd * multiplier if ticker == "CL=F" else curr_usd
         
-        # Indicators
         ema = data['Close'].ewm(span=20).mean().iloc[-1]
         
-        # RSI Calculation
+        # RSI
         delta = data['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rsi = 100 - (100 / (1 + (gain / loss).iloc[-1]))
 
-        # Signal Logic
         score = 0
         details = []
         if data['Close'].iloc[-1] > ema: 
-            details.append("🟢 Trend: Price Above 20 EMA (Bullish)")
+            details.append("🟢 Trend: Price Above 20 EMA")
             score += 1
         else: 
-            details.append("🔴 Trend: Price Below 20 EMA (Bearish)")
+            details.append("🔴 Trend: Price Below 20 EMA")
             score -= 1
         
         if rsi > 55: 
@@ -98,6 +94,11 @@ if not st.session_state.auth:
 else:
     with st.sidebar:
         st.header(f"👤 {st.session_state.user}")
+        
+        # --- MCX ADJUSTMENT BOX (In Sidebar) ---
+        st.markdown("### ⚙️ Price Adjustment")
+        mcx_multiplier = st.number_input("MCX Multiplier", min_value=10.0, max_value=200.0, value=97.1, step=0.1, help="Upstox-ലെ വില കിട്ടാൻ ഈ സംഖ്യ അല്പം കൂട്ടിനോക്കുക (ഉദാ: 97.2)")
+        
         page = st.radio("Menu", ["📊 AI Advisor", "💰 Add Expense", "🔍 View History"])
         if st.button("Logout"): st.session_state.auth = False; st.rerun()
 
@@ -106,18 +107,17 @@ else:
         asset = st.selectbox("Market Asset", ["MCX CRUDE OIL", "NIFTY 50 Spot"])
         ticker = "CL=F" if asset == "MCX CRUDE OIL" else "^NSEI"
         
-        res = get_ai_analysis(ticker)
+        res = get_ai_analysis(ticker, mcx_multiplier)
         if res:
-            label = "ORIGINAL MCX FUTURE (LIVE)" if ticker == "CL=F" else "NIFTY SPOT"
+            label = "MCX FUTURE (Adjustable)" if ticker == "CL=F" else "NIFTY SPOT"
             
             st.markdown(f"""
             <div class="ai-card">
                 <div class="signal-badge" style="background: {res['color']}; color: white;">{res['advice']}</div>
                 <span class="mcx-label">{label}</span>
                 <div class="price-box">₹ {res['price']:,.2f}</div>
-                <p style="font-size: 20px;"><b>RSI Level:</b> {res['rsi']:.2f}</p>
+                <p style="font-size: 20px;"><b>RSI:</b> {res['rsi']:.2f} | <b>Factor:</b> {mcx_multiplier}</p>
                 <hr style="border-color: #333;">
-                <h4 style="color: #FFD700;">Market Analysis Logic:</h4>
                 <ul style="list-style-type: none; padding-left: 0;">{"".join([f"<li>{d}</li>" for d in res['details']])}</ul>
             </div>
             """, unsafe_allow_html=True)
@@ -130,7 +130,7 @@ else:
 
     elif page == "💰 Add Expense":
         st.title("Quick Expense Tracker")
-        v = speech_to_text(language='ml', key='ml_voice_new')
+        v = speech_to_text(language='ml', key='ml_voice_v4')
         with st.form("expense_form"):
             it = st.text_input("Item", value=v if v else "")
             am = st.number_input("Amount", value=None)
@@ -138,7 +138,7 @@ else:
             if st.form_submit_button("SUBMIT"):
                 d, c = (am, 0) if ty == "Debit" else (0, am)
                 requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": f"[{st.session_state.user}] {it}", "entry.1460982454": d, "entry.1221658767": c})
-                st.success("Entry Saved Successfully!")
+                st.success("Entry Saved!")
 
     elif page == "🔍 View History":
         st.title("Transaction History")
@@ -147,4 +147,4 @@ else:
             st.dataframe(dfh.iloc[::-1], use_container_width=True)
         except: st.error("Database connection failed.")
 
-st.markdown("<p style='text-align:center; color: #555; margin-top: 50px;'>PAICHI AI HUB v3.0 | Real-Time MCX Pricing</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color: #555; margin-top: 50px;'>PAICHI AI HUB v3.1 | Editable Price Logic</p>", unsafe_allow_html=True)
