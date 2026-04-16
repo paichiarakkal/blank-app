@@ -1,9 +1,6 @@
-streamlit
 pandas
-requests
 yfinance
-streamlit-mic-recorder
+requests
+streamlit
 streamlit-autorefresh
-plotly
-Pillow
-pandas_ta
+streamlit-mic-recorder
