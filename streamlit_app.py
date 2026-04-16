@@ -1,5 +1,5 @@
 import streamlit as st
-import pd as pd
+import pandas as pd
 import requests
 from datetime import datetime
 import yfinance as yf
@@ -38,30 +38,24 @@ st_autorefresh(interval=60000, key="paichi_refresh")
 # --- 3. 🤖 MCX & AI ENGINE ---
 def get_mcx_converted_price(usd_price):
     try:
-        # ലൈവ് ഡോളർ നിരക്ക് എടുക്കുന്നു
         usd_inr = yf.Ticker("AEDINR=X").history(period='1d')['Close'].iloc[-1]
-        # MCX Formula: (USD Price * USDINR) + (Approx Tax/Margin adjustment)
-        # സാധാരണയായി അന്താരാഷ്ട്ര വിലയെ 83-85 നിരക്കിൽ ഗുണിച്ചാൽ MCX വില ലഭിക്കും
-        return usd_price * usd_inr * 1.01 # 1% Adjustment for MCX Premium
+        return usd_price * usd_inr * 1.01 
     except:
-        return usd_price * 83.5 # Fallback rate
+        return usd_price * 83.5 
 
 def get_ai_analysis(ticker):
     try:
         data = yf.Ticker(ticker).history(period='5d', interval='15m')
         if data.empty: return None
         
-        # technicals
         curr = data['Close'].iloc[-1]
         ema = data['Close'].ewm(span=20).mean().iloc[-1]
         
-        # RSI
         delta = data['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rsi = 100 - (100 / (1 + (gain / loss).iloc[-1]))
 
-        # Signal Logic
         score = 0
         details = []
         if curr > ema: details.append("🟢 Above 20 EMA"); score += 1
@@ -118,7 +112,6 @@ else:
             </div>
             """, unsafe_allow_html=True)
             
-        # Quick Balance Check
         try:
             df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
             bal = pd.to_numeric(df['Credit'], errors='coerce').sum() - pd.to_numeric(df['Debit'], errors='coerce').sum()
