@@ -26,26 +26,29 @@ st.markdown("""
     .stApp { background: #0a0e14; color: #ffffff; }
     [data-testid="stSidebar"] { background: #000000 !important; border-right: 2px solid #FFD700; }
     .ai-card { background: #161b22; padding: 25px; border-radius: 15px; border: 1px solid #30363d; box-shadow: 0 4px 20px rgba(0,0,0,0.8); }
-    .price-box { font-size: 55px; font-weight: bold; color: #FFD700; margin: 10px 0; }
+    .price-box { font-size: 60px; font-weight: bold; color: #FFD700; margin: 5px 0; }
     .mcx-label { color: #00FF00; font-size: 18px; font-weight: bold; background: rgba(0,255,0,0.1); padding: 5px 10px; border-radius: 5px; }
-    .signal-badge { padding: 15px; border-radius: 10px; font-size: 30px; font-weight: bold; text-align: center; margin-bottom: 20px; }
-    .adj-box { background: #1e293b; padding: 10px; border-radius: 10px; border: 1px dashed #FFD700; margin-bottom: 15px; }
+    .signal-badge { padding: 15px; border-radius: 10px; font-size: 32px; font-weight: bold; text-align: center; margin-bottom: 20px; }
+    li { font-size: 18px; margin-bottom: 8px; }
 </style>
 """, unsafe_allow_html=True)
 
-st_autorefresh(interval=60000, key="paichi_refresh")
+# 🚀 ഓരോ 3 സെക്കൻഡിലും ലൈവ് പ്രൈസ് പുതുക്കാൻ (3000 മില്ലി സെക്കൻഡ്)
+st_autorefresh(interval=3000, key="paichi_live_tick")
 
 # --- 3. 🤖 MCX AI ENGINE ---
 def get_ai_analysis(ticker, multiplier):
     try:
-        data = yf.Ticker(ticker).history(period='5d', interval='15m')
+        # ഏറ്റവും പുതിയ ഡാറ്റ കിട്ടാൻ 1 മിനിറ്റ് ഇന്റർവെൽ ഉപയോഗിക്കുന്നു
+        data = yf.Ticker(ticker).history(period='1d', interval='1m')
         if data.empty: return None
         
         curr_usd = data['Close'].iloc[-1]
         
-        # MCX FUTURE CONVERSION (യൂസർ സെറ്റ് ചെയ്യുന്ന മൾട്ടിപ്ലയർ ഉപയോഗിക്കുന്നു)
+        # MCX FUTURE CONVERSION
         final_price = curr_usd * multiplier if ticker == "CL=F" else curr_usd
         
+        # Indicators
         ema = data['Close'].ewm(span=20).mean().iloc[-1]
         
         # RSI
@@ -54,20 +57,21 @@ def get_ai_analysis(ticker, multiplier):
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rsi = 100 - (100 / (1 + (gain / loss).iloc[-1]))
 
+        # Logic for Signals
         score = 0
         details = []
         if data['Close'].iloc[-1] > ema: 
-            details.append("🟢 Trend: Price Above 20 EMA")
+            details.append("🟢 Price > 20 EMA (Bullish Trend)")
             score += 1
         else: 
-            details.append("🔴 Trend: Price Below 20 EMA")
+            details.append("🔴 Price < 20 EMA (Bearish Trend)")
             score -= 1
         
         if rsi > 55: 
-            details.append("⚡ Strength: Bullish Momentum")
+            details.append("⚡ Strong Bullish Momentum")
             score += 1
         elif rsi < 45: 
-            details.append("❄️ Strength: Bearish Pressure")
+            details.append("❄️ Strong Bearish Pressure")
             score -= 1
 
         advice = "NEUTRAL ⏳"
@@ -95,16 +99,16 @@ else:
     with st.sidebar:
         st.header(f"👤 {st.session_state.user}")
         
-        # --- MCX ADJUSTMENT BOX (In Sidebar) ---
-        st.markdown("### ⚙️ Price Adjustment")
-        mcx_multiplier = st.number_input("MCX Multiplier", min_value=10.0, max_value=200.0, value=97.1, step=0.1, help="Upstox-ലെ വില കിട്ടാൻ ഈ സംഖ്യ അല്പം കൂട്ടിനോക്കുക (ഉദാ: 97.2)")
+        st.markdown("### ⚙️ Live Adjustment")
+        # അപ്സ്റ്റോക്സിലെ വിലയുമായി അഡ്ജസ്റ്റ് ചെയ്യാൻ ഫാക്ടർ ഇവിടെ മാറ്റാം
+        mcx_multiplier = st.number_input("Price Factor", min_value=50.0, max_value=150.0, value=96.5, step=0.1)
         
-        page = st.radio("Menu", ["📊 AI Advisor", "💰 Add Expense", "🔍 View History"])
+        page = st.radio("Menu", ["📊 AI Advisor", "💰 Add Expense", "🔍 History"])
         if st.button("Logout"): st.session_state.auth = False; st.rerun()
 
     if page == "📊 AI Advisor":
-        st.title("Live Pro Advisor")
-        asset = st.selectbox("Market Asset", ["MCX CRUDE OIL", "NIFTY 50 Spot"])
+        st.title("Live Pro Advisor (3s Sync)")
+        asset = st.selectbox("Market", ["MCX CRUDE OIL", "NIFTY 50 Spot"])
         ticker = "CL=F" if asset == "MCX CRUDE OIL" else "^NSEI"
         
         res = get_ai_analysis(ticker, mcx_multiplier)
@@ -125,26 +129,27 @@ else:
         try:
             df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
             bal = pd.to_numeric(df['Credit'], errors='coerce').sum() - pd.to_numeric(df['Debit'], errors='coerce').sum()
-            st.info(f"Main Balance: ₹{bal:,.2f}")
+            st.success(f"Fund Balance: ₹{bal:,.2f}")
         except: pass
 
     elif page == "💰 Add Expense":
-        st.title("Quick Expense Tracker")
-        v = speech_to_text(language='ml', key='ml_voice_v4')
+        st.title("Expense Entry")
+        v = speech_to_text(language='ml', key='ml_voice_v5')
         with st.form("expense_form"):
             it = st.text_input("Item", value=v if v else "")
             am = st.number_input("Amount", value=None)
             ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
-            if st.form_submit_button("SUBMIT"):
+            if st.form_submit_button("SAVE"):
                 d, c = (am, 0) if ty == "Debit" else (0, am)
                 requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": f"[{st.session_state.user}] {it}", "entry.1460982454": d, "entry.1221658767": c})
-                st.success("Entry Saved!")
+                st.balloons()
+                st.success("Success!")
 
-    elif page == "🔍 View History":
+    elif page == "🔍 History":
         st.title("Transaction History")
         try:
             dfh = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
             st.dataframe(dfh.iloc[::-1], use_container_width=True)
-        except: st.error("Database connection failed.")
+        except: st.error("No data found.")
 
-st.markdown("<p style='text-align:center; color: #555; margin-top: 50px;'>PAICHI AI HUB v3.1 | Editable Price Logic</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color: #444; margin-top: 30px;'>PAICHI AI HUB v3.2 | Real-Time Sync Enabled</p>", unsafe_allow_html=True)
