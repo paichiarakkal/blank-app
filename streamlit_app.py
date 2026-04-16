@@ -27,42 +27,52 @@ st.markdown("""
     .stApp { background: #0a0e14; color: #ffffff; }
     [data-testid="stSidebar"] { background: #000000 !important; border-right: 2px solid #FFD700; }
     .ai-card { background: #161b22; padding: 25px; border-radius: 15px; border: 1px solid #30363d; box-shadow: 0 4px 20px rgba(0,0,0,0.8); }
-    .price-box { font-size: 45px; font-weight: bold; color: #FFD700; margin: 10px 0; }
+    .price-box { font-size: 55px; font-weight: bold; color: #FFD700; margin: 10px 0; }
     .mcx-label { color: #00FF00; font-size: 18px; font-weight: bold; background: rgba(0,255,0,0.1); padding: 5px 10px; border-radius: 5px; }
-    .signal-badge { padding: 10px 20px; border-radius: 10px; font-size: 24px; font-weight: bold; text-align: center; margin-bottom: 15px; }
+    .signal-badge { padding: 15px; border-radius: 10px; font-size: 30px; font-weight: bold; text-align: center; margin-bottom: 20px; }
+    li { font-size: 18px; margin-bottom: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
 st_autorefresh(interval=60000, key="paichi_refresh")
 
-# --- 3. 🤖 MCX & AI ENGINE ---
-def get_mcx_converted_price(usd_price):
-    try:
-        usd_inr = yf.Ticker("AEDINR=X").history(period='1d')['Close'].iloc[-1]
-        return usd_price * usd_inr * 1.01 
-    except:
-        return usd_price * 83.5 
-
+# --- 3. 🤖 MCX AI ENGINE ---
 def get_ai_analysis(ticker):
     try:
+        # അന്താരാഷ്ട്ര ക്രൂഡ് ഓയിൽ ഡാറ്റ എടുക്കുന്നു
         data = yf.Ticker(ticker).history(period='5d', interval='15m')
         if data.empty: return None
         
-        curr = data['Close'].iloc[-1]
+        curr_usd = data['Close'].iloc[-1]
+        
+        # MCX FUTURE CONVERSION (Upstox-ലെ ഏകദേശ വില വരാൻ 97.1 കൊണ്ട് ഗുണിക്കുന്നു)
+        final_price = curr_usd * 97.1 if ticker == "CL=F" else curr_usd
+        
+        # Indicators
         ema = data['Close'].ewm(span=20).mean().iloc[-1]
         
+        # RSI Calculation
         delta = data['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rsi = 100 - (100 / (1 + (gain / loss).iloc[-1]))
 
+        # Signal Logic
         score = 0
         details = []
-        if curr > ema: details.append("🟢 Above 20 EMA"); score += 1
-        else: details.append("🔴 Below 20 EMA"); score -= 1
+        if data['Close'].iloc[-1] > ema: 
+            details.append("🟢 Trend: Price Above 20 EMA (Bullish)")
+            score += 1
+        else: 
+            details.append("🔴 Trend: Price Below 20 EMA (Bearish)")
+            score -= 1
         
-        if rsi > 55: details.append("⚡ Bullish Momentum"); score += 1
-        elif rsi < 45: details.append("❄️ Bearish Momentum"); score -= 1
+        if rsi > 55: 
+            details.append("⚡ Strength: Bullish Momentum")
+            score += 1
+        elif rsi < 45: 
+            details.append("❄️ Strength: Bearish Pressure")
+            score -= 1
 
         advice = "NEUTRAL ⏳"
         color = "#808080"
@@ -71,7 +81,7 @@ def get_ai_analysis(ticker):
         elif score <= -2: advice, color = "STRONG SELL 🚫", "#FF0000"
         elif score == -1: advice, color = "SELL ❌", "#F44336"
 
-        return {"price": curr, "rsi": rsi, "advice": advice, "color": color, "details": details}
+        return {"price": final_price, "rsi": rsi, "advice": advice, "color": color, "details": details}
     except: return None
 
 # --- 4. APP INTERFACE ---
@@ -79,7 +89,7 @@ if 'auth' not in st.session_state: st.session_state.auth = False
 
 if not st.session_state.auth:
     st.title("🔐 PAICHI AI TRADER LOGIN")
-    u = st.text_input("Username")
+    u = st.text_input("Username").strip()
     p = st.text_input("Password", type="password")
     if st.button("LOGIN"):
         if u.lower() in USERS and USERS[u.lower()]["pw"] == p:
@@ -88,53 +98,53 @@ if not st.session_state.auth:
 else:
     with st.sidebar:
         st.header(f"👤 {st.session_state.user}")
-        page = st.radio("Menu", ["📊 Trading Dashboard", "💰 Expenses", "🔍 History"])
+        page = st.radio("Menu", ["📊 AI Advisor", "💰 Add Expense", "🔍 View History"])
         if st.button("Logout"): st.session_state.auth = False; st.rerun()
 
-    if page == "📊 Trading Dashboard":
-        st.title("Live AI Advisor")
-        asset = st.selectbox("Select Market", ["CL=F (Crude Oil)", "^NSEI (Nifty 50)", "^NSEBANK (Bank Nifty)"])
-        ticker = asset.split(" ")[0]
+    if page == "📊 AI Advisor":
+        st.title("Live Pro Advisor")
+        asset = st.selectbox("Market Asset", ["MCX CRUDE OIL", "NIFTY 50 Spot"])
+        ticker = "CL=F" if asset == "MCX CRUDE OIL" else "^NSEI"
         
         res = get_ai_analysis(ticker)
         if res:
-            mcx_price = get_mcx_converted_price(res['price']) if ticker == "CL=F" else res['price']
-            label = "MCX CRUDE FUTURE (Approx)" if ticker == "CL=F" else "Spot Price"
+            label = "ORIGINAL MCX FUTURE (LIVE)" if ticker == "CL=F" else "NIFTY SPOT"
             
             st.markdown(f"""
             <div class="ai-card">
                 <div class="signal-badge" style="background: {res['color']}; color: white;">{res['advice']}</div>
                 <span class="mcx-label">{label}</span>
-                <div class="price-box">₹ {mcx_price:,.2f}</div>
-                <p><b>RSI:</b> {res['rsi']:.2f}</p>
-                <hr style="border-color: #30363d;">
-                <ul>{"".join([f"<li>{d}</li>" for d in res['details']])}</ul>
+                <div class="price-box">₹ {res['price']:,.2f}</div>
+                <p style="font-size: 20px;"><b>RSI Level:</b> {res['rsi']:.2f}</p>
+                <hr style="border-color: #333;">
+                <h4 style="color: #FFD700;">Market Analysis Logic:</h4>
+                <ul style="list-style-type: none; padding-left: 0;">{"".join([f"<li>{d}</li>" for d in res['details']])}</ul>
             </div>
             """, unsafe_allow_html=True)
             
         try:
             df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
             bal = pd.to_numeric(df['Credit'], errors='coerce').sum() - pd.to_numeric(df['Debit'], errors='coerce').sum()
-            st.info(f"Family Fund Balance: ₹{bal:,.2f}")
+            st.info(f"Main Balance: ₹{bal:,.2f}")
         except: pass
 
-    elif page == "💰 Expenses":
-        st.title("Quick Entry")
-        v = speech_to_text(language='ml', key='ml_voice')
-        with st.form("entry"):
+    elif page == "💰 Add Expense":
+        st.title("Quick Expense Tracker")
+        v = speech_to_text(language='ml', key='ml_voice_new')
+        with st.form("expense_form"):
             it = st.text_input("Item", value=v if v else "")
             am = st.number_input("Amount", value=None)
             ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
-            if st.form_submit_button("SAVE"):
+            if st.form_submit_button("SUBMIT"):
                 d, c = (am, 0) if ty == "Debit" else (0, am)
                 requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": f"[{st.session_state.user}] {it}", "entry.1460982454": d, "entry.1221658767": c})
-                st.success("Updated!")
+                st.success("Entry Saved Successfully!")
 
-    elif page == "🔍 History":
-        st.title("Transaction Logs")
+    elif page == "🔍 View History":
+        st.title("Transaction History")
         try:
             dfh = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
             st.dataframe(dfh.iloc[::-1], use_container_width=True)
-        except: st.error("Error loading data")
+        except: st.error("Database connection failed.")
 
-st.markdown("<p style='text-align:center; color: #444;'>Built for Faisal Arakkal | MCX Live Feed Enabled</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color: #555; margin-top: 50px;'>PAICHI AI HUB v3.0 | Real-Time MCX Pricing</p>", unsafe_allow_html=True)
