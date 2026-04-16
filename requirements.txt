@@ -6,3 +6,4 @@ streamlit-mic-recorder
 streamlit-autorefresh
 plotly
 Pillow
+pandas_ta
