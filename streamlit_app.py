@@ -15,7 +15,7 @@ FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh7
 
 USERS = {"faisal": "faisal123", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI GOLD & SILVER v3.5", layout="wide")
+st.set_page_config(page_title="PAICHI GOLD & SILVER v3.6", layout="wide")
 st_autorefresh(interval=60000, key="auto_refresh")
 
 # --- 2. 🎨 PREMIUM DESIGN ---
@@ -113,8 +113,6 @@ else:
         st.rerun()
 
     # --- PAGES ---
-    
-    # 📊 ADVISOR PAGE (നിങ്ങൾ ചോദിച്ച മാറ്റം ഇവിടെയാണ്)
     if page == "📊 Advisor" and curr_user != "shabana":
         st.title("🚀 Smart Trading Terminal")
         markets = get_triple_advisor()
@@ -128,9 +126,9 @@ else:
                             text-align: center; 
                             margin-bottom: 25px;
                             box-shadow: 0 12px 25px rgba(0,0,0,0.6);">
-                    <h2 style="color:white !important; margin-bottom:5px; font-size:35px;">{m["name"]}</h2>
+                    <h2 style="color:#ffffff !important; margin-bottom:5px; font-size:35px;">{m["name"]}</h2>
                     <h1 style="color:{m["color"]} !important; font-size:65px; margin:15px 0px; text-shadow: 2px 2px 10px {m['color']};">{m["signal"]}</h1>
-                    <h1 style="color:#FFD700 !important; font-size:55px; margin-bottom:10px;">₹{m["price"]:,.0f}</h1>
+                    <h1 style="color:#FFD700 !important; font-size:60px; margin-bottom:10px; text-shadow: 2px 2px 5px rgba(0,0,0,0.5);">₹{m["price"]:,.0f}</h1>
                     <p style="color:#00e5ff !important; font-size:25px; font-weight:bold;">RSI: {m["rsi"]:.1f}</p>
                 </div>
                 """, unsafe_allow_html=True)
