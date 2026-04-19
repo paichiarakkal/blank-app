@@ -15,34 +15,34 @@ FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh7
 
 USERS = {"faisal": "faisal123", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI PURPLE EDITION v4.0", layout="wide")
+st.set_page_config(page_title="PAICHI PURPLE-GOLD v4.1", layout="wide")
 st_autorefresh(interval=60000, key="auto_refresh")
 
-# --- 2. 🎨 PREMIUM DESIGN (Purple Theme) ---
+# --- 2. 🎨 PREMIUM DESIGN (Purple & Gold Theme) ---
 st.markdown("""
     <style>
     .stApp {
-        background: linear-gradient(135deg, #4B0082, #8A2BE2, #9370DB);
+        background: linear-gradient(135deg, #2D0844, #4B0082, #1A0521);
         color: #fff;
     }
     [data-testid="stSidebar"] {
-        background: rgba(0,0,0,0.7) !important;
+        background: rgba(0,0,0,0.85) !important;
     }
     .stButton>button {
-        background-color: #9370DB;
-        color: white;
+        background-color: #FFD700;
+        color: #000;
         border-radius: 10px;
-        border: 2px solid white;
+        border: none;
+        font-weight: bold;
     }
-    /* പർപ്പിൾ ബോക്സ് ഡിസൈൻ */
     .purple-box {
-        background: rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.05);
         padding: 30px;
         border-radius: 25px;
-        border: 4px solid #E0B0FF; /* Light Purple Border */
+        border: 2px solid rgba(255, 215, 0, 0.3);
         text-align: center;
         margin-bottom: 25px;
-        box-shadow: 0 12px 25px rgba(0,0,0,0.5);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
     h1, h2, h3, p, label { color: white !important; font-weight: bold !important; }
     .stDataFrame { background: white; border-radius: 10px; }
@@ -113,10 +113,12 @@ else:
             for m in markets:
                 st.markdown(f"""
                 <div class="purple-box" style="border-color: {m['color']} !important;">
-                    <h2 style="color:white !important; font-size:35px;">{m["name"]}</h2>
-                    <h1 style="color:{m["color"]} !important; font-size:65px; margin:15px 0px;">{m["signal"]}</h1>
-                    <h1 style="color:#FFFFFF !important; font-size:60px; margin-bottom:10px;">₹{m["price"]:,.0f}</h1>
-                    <p style="color:#E0B0FF !important; font-size:25px;">RSI: {m["rsi"]:.1f}</p>
+                    <h2 style="color:#E0B0FF !important; font-size:35px; margin-bottom:5px;">{m["name"]}</h2>
+                    <h1 style="color:{m["color"]} !important; font-size:65px; margin:10px 0px; text-shadow: 2px 2px 15px {m['color']};">{m["signal"]}</h1>
+                    
+                    <h1 style="color:#FFD700 !important; font-size:60px; margin-bottom:10px; text-shadow: 2px 2px 10px rgba(0,0,0,0.5);">₹{m["price"]:,.0f}</h1>
+                    
+                    <p style="color:#ffffff !important; font-size:25px; opacity: 0.8;">RSI: {m["rsi"]:.1f}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -128,7 +130,12 @@ else:
             total_in = pd.to_numeric(df['Credit'], errors='coerce').fillna(0).sum()
             total_out = pd.to_numeric(df['Debit'], errors='coerce').fillna(0).sum()
             balance = total_in - total_out
-            st.markdown(f'<div class="purple-box"><h1 style="color:white !important; font-size:60px;">Balance: ₹{balance:,.2f}</h1></div>', unsafe_allow_html=True)
+            st.markdown(f"""
+            <div class="purple-box" style="border-color: #FFD700 !important;">
+                <p style="color:#E0B0FF !important; font-size:20px;">Net Balance</p>
+                <h1 style="color:#FFD700 !important; font-size:65px;">₹{balance:,.2f}</h1>
+            </div>
+            """, unsafe_allow_html=True)
         except: st.error("Error loading data.")
 
     elif page == "💰 Add Entry":
@@ -155,7 +162,7 @@ else:
             if not report_df.empty:
                 fig = px.pie(report_df, values='Debit', names=item_col, hole=0.3)
                 st.plotly_chart(fig, use_container_width=True)
-        except: st.error("Report Error")
+        except: st.write("No report data available.")
 
     elif page == "🤝 Debt Tracker" and curr_user != "shabana":
         st.title("Debt Management")
@@ -173,4 +180,4 @@ else:
         try:
             df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
             st.dataframe(df.iloc[::-1], use_container_width=True)
-        except: st.write("Loading...")
+        except: st.write("Loading History...")
