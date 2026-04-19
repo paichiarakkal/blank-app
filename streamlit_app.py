@@ -15,10 +15,10 @@ FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh7
 
 USERS = {"faisal": "faisal123", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI TRANSPARENT BLACK v5.2", layout="wide")
+st.set_page_config(page_title="PAICHI PREMIUM v5.5", layout="wide")
 st_autorefresh(interval=60000, key="auto_refresh")
 
-# --- 2. 🎨 PREMIUM DESIGN (Transparent Black Sidebar) ---
+# --- 2. 🎨 DESIGN (Transparent Black Sidebar & Purple Theme) ---
 st.markdown("""
     <style>
     .stApp {
@@ -26,11 +26,10 @@ st.markdown("""
         color: #fff;
     }
     
-    /* 📱 സുതാര്യമായ കറുത്ത സൈഡ് ബാർ */
-    /* ഇതിലൂടെ നോക്കിയാൽ മെയിൻ പേജ് കാണാൻ സാധിക്കും */
+    /* 📱 TRANSPARENT BLACK SIDEBAR */
     [data-testid="stSidebar"] {
         background-color: rgba(0, 0, 0, 0.2) !important; 
-        backdrop-filter: blur(10px);
+        backdrop-filter: blur(12px);
         border-right: 1px solid rgba(255, 255, 255, 0.1);
     }
     
@@ -48,7 +47,7 @@ st.markdown("""
     
     .purple-box {
         background: rgba(255, 255, 255, 0.05);
-        padding: 30px;
+        padding: 300px; /* Adjust if needed */
         border-radius: 25px;
         border: 2px solid rgba(255, 215, 0, 0.3);
         text-align: center;
@@ -56,6 +55,9 @@ st.markdown("""
         box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
     
+    /* Fix for small screens/padding */
+    .purple-box { padding: 30px !important; }
+
     h1, h2, h3, p, label { color: white !important; font-weight: bold !important; }
     .stDataFrame { background: white; border-radius: 10px; }
     </style>
@@ -64,7 +66,7 @@ st.markdown("""
 if 'auth' not in st.session_state: st.session_state.auth = False
 if 'user' not in st.session_state: st.session_state.user = ""
 
-# --- 3. 📊 TRIPLE INDICATOR ENGINE ---
+# --- 3. 📊 TRADING ENGINE ---
 def get_triple_advisor():
     try:
         symbols = {"Nifty 50": "^NSEI", "Bank Nifty": "^NSEBANK", "Crude Fut": "CL=F"}
@@ -127,7 +129,7 @@ else:
                 <div class="purple-box" style="border-color: {m['color']} !important;">
                     <h2 style="color:#E0B0FF !important; font-size:35px; margin-bottom:5px;">{m["name"]}</h2>
                     <h1 style="color:{m["color"]} !important; font-size:65px; margin:15px 0px; text-shadow: 2px 2px 15px {m['color']};">{m["signal"]}</h1>
-                    <h1 style="color:#FFD700 !important; font-size:60px; margin-bottom:10px; text-shadow: 2px 2px 10px rgba(0,0,0,0.5);">₹{m['price']:,.0f}</h1>
+                    <h1 style="color:#FFD700 !important; font-size:60px; margin-bottom:10px;">₹{m['price']:,.0f}</h1>
                     <p style="color:#ffffff !important; font-size:25px; opacity: 0.8;">RSI: {m['rsi']:.1f}</p>
                 </div>
                 """, unsafe_allow_html=True)
@@ -174,7 +176,7 @@ else:
                     if not report_df.empty:
                         fig = px.pie(report_df, values='Debit', names=item_col, hole=0.3)
                         st.plotly_chart(fig, use_container_width=True)
-        except Exception as e: st.error("Report Error")
+        except: st.error("Report Loading...")
 
     elif page == "🤝 Debt Tracker" and curr_user != "shabana":
         st.title("Debt Management")
