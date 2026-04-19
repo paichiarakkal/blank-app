@@ -15,7 +15,7 @@ FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh7
 
 USERS = {"faisal": "faisal123", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI PURPLE-GOLD v4.1", layout="wide")
+st.set_page_config(page_title="PAICHI PURPLE GOLD v4.2", layout="wide")
 st_autorefresh(interval=60000, key="auto_refresh")
 
 # --- 2. 🎨 PREMIUM DESIGN (Purple & Gold Theme) ---
@@ -111,13 +111,12 @@ else:
         markets = get_triple_advisor()
         if markets:
             for m in markets:
+                # Advisor ഭാഗത്തെ കോഡ് കൃത്യമായി നൽകിയിരിക്കുന്നു
                 st.markdown(f"""
                 <div class="purple-box" style="border-color: {m['color']} !important;">
                     <h2 style="color:#E0B0FF !important; font-size:35px; margin-bottom:5px;">{m["name"]}</h2>
-                    <h1 style="color:{m["color"]} !important; font-size:65px; margin:10px 0px; text-shadow: 2px 2px 15px {m['color']};">{m["signal"]}</h1>
-                    
+                    <h1 style="color:{m["color"]} !important; font-size:65px; margin:15px 0px; text-shadow: 2px 2px 15px {m['color']};">{m["signal"]}</h1>
                     <h1 style="color:#FFD700 !important; font-size:60px; margin-bottom:10px; text-shadow: 2px 2px 10px rgba(0,0,0,0.5);">₹{m["price"]:,.0f}</h1>
-                    
                     <p style="color:#ffffff !important; font-size:25px; opacity: 0.8;">RSI: {m["rsi"]:.1f}</p>
                 </div>
                 """, unsafe_allow_html=True)
@@ -156,13 +155,15 @@ else:
         try:
             df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
             df.columns = df.columns.str.strip()
-            df['Debit'] = pd.to_numeric(df['Debit'], errors='coerce').fillna(0)
-            item_col = 'Item' if 'Item' in df.columns else 'item'
-            report_df = df[df['Debit'] > 0].groupby(item_col)['Debit'].sum().reset_index()
-            if not report_df.empty:
-                fig = px.pie(report_df, values='Debit', names=item_col, hole=0.3)
-                st.plotly_chart(fig, use_container_width=True)
-        except: st.write("No report data available.")
+            if 'Debit' in df.columns:
+                df['Debit'] = pd.to_numeric(df['Debit'], errors='coerce').fillna(0)
+                item_col = 'Item' if 'Item' in df.columns else 'item'
+                if item_col in df.columns:
+                    report_df = df[df['Debit'] > 0].groupby(item_col)['Debit'].sum().reset_index()
+                    if not report_df.empty:
+                        fig = px.pie(report_df, values='Debit', names=item_col, hole=0.3)
+                        st.plotly_chart(fig, use_container_width=True)
+        except Exception as e: st.error(f"Report Error: {e}")
 
     elif page == "🤝 Debt Tracker" and curr_user != "shabana":
         st.title("Debt Management")
