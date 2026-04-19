@@ -15,10 +15,11 @@ FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh7
 
 USERS = {"faisal": "faisal123", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI PREMIUM v5.5", layout="wide")
+st.set_page_config(page_title="PAICHI PREMIUM v5.6", layout="wide")
 st_autorefresh(interval=60000, key="auto_refresh")
 
-# --- 2. 🎨 DESIGN (Transparent Black Sidebar & Purple Theme) ---
+# --- 2. 🎨 PREMIUM DESIGN (Transparent Black Sidebar as requested) ---
+# നിങ്ങൾ അയച്ച 46667.jpg സ്ക്രീൻഷോട്ടിലെ ലുക്ക് ലഭിക്കാൻ താഴെ പറയുന്ന സ്റ്റൈലുകൾ ഉപയോഗിക്കുന്നു
 st.markdown("""
     <style>
     .stApp {
@@ -26,9 +27,9 @@ st.markdown("""
         color: #fff;
     }
     
-    /* 📱 TRANSPARENT BLACK SIDEBAR */
+    /* 📱 നിങ്ങൾ അയച്ച ഫയലിൽ ഉള്ളതുപോലെയുള്ള സുതാര്യമായ സൈഡ് ബാർ */
     [data-testid="stSidebar"] {
-        background-color: rgba(0, 0, 0, 0.2) !important; 
+        background-color: rgba(0, 0, 0, 0.4) !important; 
         backdrop-filter: blur(12px);
         border-right: 1px solid rgba(255, 255, 255, 0.1);
     }
@@ -47,7 +48,7 @@ st.markdown("""
     
     .purple-box {
         background: rgba(255, 255, 255, 0.05);
-        padding: 300px; /* Adjust if needed */
+        padding: 30px !important;
         border-radius: 25px;
         border: 2px solid rgba(255, 215, 0, 0.3);
         text-align: center;
@@ -55,9 +56,6 @@ st.markdown("""
         box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
     
-    /* Fix for small screens/padding */
-    .purple-box { padding: 30px !important; }
-
     h1, h2, h3, p, label { color: white !important; font-weight: bold !important; }
     .stDataFrame { background: white; border-radius: 10px; }
     </style>
