@@ -15,10 +15,10 @@ FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh7
 
 USERS = {"faisal": "faisal123", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI FINANCE v5.1", layout="wide")
+st.set_page_config(page_title="PAICHI GLASS v5.3", layout="wide")
 st_autorefresh(interval=60000, key="auto_refresh")
 
-# --- 2. 🎨 PREMIUM DESIGN (Solid Black Sidebar) ---
+# --- 2. 🎨 PREMIUM DESIGN (Super Transparent Sidebar) ---
 st.markdown("""
     <style>
     .stApp {
@@ -26,12 +26,17 @@ st.markdown("""
         color: #fff;
     }
     
-    /* 📱 പഴയപടിയുള്ള കറുത്ത സൈഡ് ബാർ */
+    /* 📱 നിങ്ങൾ ചോദിച്ച 0.2 സുതാര്യത ഇവിടെ നൽകിയിട്ടുണ്ട് */
     [data-testid="stSidebar"] {
-        background-color: #000000 !important;
-        opacity: 1 !important;
+        background-color: rgba(0, 0, 0, 0.2) !important; 
+        backdrop-filter: blur(12px); /* ബ്ലർ അല്പം കൂട്ടിയിട്ടുണ്ട്, അപ്പോൾ ലുക്ക് കൂടും */
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
     }
     
+    [data-testid="stSidebar"] > div:first-child {
+        background: transparent !important;
+    }
+
     .stButton>button {
         background-color: #FFD700;
         color: #000;
@@ -120,9 +125,9 @@ else:
                 st.markdown(f"""
                 <div class="purple-box" style="border-color: {m['color']} !important;">
                     <h2 style="color:#E0B0FF !important; font-size:35px; margin-bottom:5px;">{m["name"]}</h2>
-                    <h1 style="color:{m["color"]} !important; font-size:65px; margin:15px 0px;">{m["signal"]}</h1>
-                    <h1 style="color:#FFD700 !important; font-size:60px; margin-bottom:10px;">₹{m['price']:,.0f}</h1>
-                    <p style="color:#ffffff !important; font-size:25px;">RSI: {m['rsi']:.1f}</p>
+                    <h1 style="color:{m["color"]} !important; font-size:65px; margin:15px 0px; text-shadow: 2px 2px 15px {m['color']};">{m["signal"]}</h1>
+                    <h1 style="color:#FFD700 !important; font-size:60px; margin-bottom:10px; text-shadow: 2px 2px 10px rgba(0,0,0,0.5);">₹{m['price']:,.0f}</h1>
+                    <p style="color:#ffffff !important; font-size:25px; opacity: 0.8;">RSI: {m['rsi']:.1f}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -168,7 +173,7 @@ else:
                     if not report_df.empty:
                         fig = px.pie(report_df, values='Debit', names=item_col, hole=0.3)
                         st.plotly_chart(fig, use_container_width=True)
-        except: st.error("Report Loading...")
+        except Exception as e: st.error("Report Error")
 
     elif page == "🤝 Debt Tracker" and curr_user != "shabana":
         st.title("Debt Management")
