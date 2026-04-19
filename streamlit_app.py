@@ -15,10 +15,10 @@ FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh7
 
 USERS = {"faisal": "faisal123", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI GOLD & SILVER v3.2", layout="wide")
+st.set_page_config(page_title="PAICHI GOLD & SILVER v3.5", layout="wide")
 st_autorefresh(interval=60000, key="auto_refresh")
 
-# --- 2. 🎨 PREMIUM DESIGN (Silver Sidebar & Gold Main) ---
+# --- 2. 🎨 PREMIUM DESIGN ---
 st.markdown("""
     <style>
     .stApp {
@@ -32,16 +32,18 @@ st.markdown("""
         background-color: #000;
         color: #FFD700;
         border-radius: 10px;
-        border: 1px solid #FFD700;
+        border: 2px solid #FFD700;
+        font-weight: bold;
     }
     .metric-box {
-        background: rgba(0,0,0,0.85);
+        background: rgba(0,0,0,0.9);
         color: #FFD700;
-        padding: 20px;
-        border-radius: 15px;
-        border: 2px solid #FFD700;
+        padding: 25px;
+        border-radius: 20px;
+        border: 3px solid #FFD700;
         text-align: center;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        margin-bottom: 20px;
     }
     h1, h2, h3, p, label { color: #000 !important; font-weight: bold !important; }
     .stDataFrame { background: white; border-radius: 10px; }
@@ -71,7 +73,7 @@ def get_triple_advisor():
             loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
             rsi = 100 - (100 / (1 + (gain / loss).iloc[-1]))
             
-            # SUPERTREND (ATR based)
+            # SUPERTREND
             atr = (df['High'] - df['Low']).rolling(window=10).mean().iloc[-1]
             lower_band = ((df['High'] + df['Low']) / 2).iloc[-1] - (3 * atr)
             st_buy = last_p > lower_band
@@ -111,31 +113,43 @@ else:
         st.rerun()
 
     # --- PAGES ---
+    
+    # 📊 ADVISOR PAGE (നിങ്ങൾ ചോദിച്ച മാറ്റം ഇവിടെയാണ്)
     if page == "📊 Advisor" and curr_user != "shabana":
         st.title("🚀 Smart Trading Terminal")
         markets = get_triple_advisor()
         if markets:
-            cols = st.columns(len(markets))
-            for i, m in enumerate(markets):
-                with cols[i]:
-                    st.markdown(f"""
-                    <div class="metric-box">
-                        <h3 style="color:white !important;">{m["name"]}</h3>
-                        <h2 style="color:{m["color"]} !important;">{m["signal"]}</h2>
-                        <h1 style="color:#FFD700 !important; font-size:30px;">₹{m["price"]:,.0f}</h1>
-                        <p style="color:#aaa !important;">RSI: {m["rsi"]:.1f}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+            for m in markets:
+                st.markdown(f"""
+                <div style="background: rgba(0,0,0,0.92); 
+                            padding: 30px; 
+                            border-radius: 25px; 
+                            border: 4px solid {m['color']}; 
+                            text-align: center; 
+                            margin-bottom: 25px;
+                            box-shadow: 0 12px 25px rgba(0,0,0,0.6);">
+                    <h2 style="color:white !important; margin-bottom:5px; font-size:35px;">{m["name"]}</h2>
+                    <h1 style="color:{m["color"]} !important; font-size:65px; margin:15px 0px; text-shadow: 2px 2px 10px {m['color']};">{m["signal"]}</h1>
+                    <h1 style="color:#FFD700 !important; font-size:55px; margin-bottom:10px;">₹{m["price"]:,.0f}</h1>
+                    <p style="color:#00e5ff !important; font-size:25px; font-weight:bold;">RSI: {m["rsi"]:.1f}</p>
+                </div>
+                """, unsafe_allow_html=True)
+        else: st.warning("Market Data loading...")
 
     elif page == "🏠 Dashboard" and curr_user != "shabana":
         st.title("Financial Status")
         try:
             df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
             df.columns = df.columns.str.strip()
-            total_in = pd.to_numeric(df['Credit'], errors='coerce').sum()
-            total_out = pd.to_numeric(df['Debit'], errors='coerce').sum()
+            total_in = pd.to_numeric(df['Credit'], errors='coerce').fillna(0).sum()
+            total_out = pd.to_numeric(df['Debit'], errors='coerce').fillna(0).sum()
             balance = total_in - total_out
-            st.markdown(f'<div class="metric-box" style="font-size:40px; color:#FFD700 !important;">Balance: ₹{balance:,.2f}</div>', unsafe_allow_html=True)
+            st.markdown(f"""
+            <div class="metric-box">
+                <p style="color:#aaa !important; font-size:20px;">കയ്യിലുള്ള ബാക്കി തുക</p>
+                <h1 style="color:#FFD700 !important; font-size:60px;">₹{balance:,.2f}</h1>
+            </div>
+            """, unsafe_allow_html=True)
         except: st.error("Data loading error.")
 
     elif page == "💰 Add Entry":
@@ -164,7 +178,6 @@ else:
                     if not report_df.empty:
                         fig = px.pie(report_df, values='Debit', names=item_col, hole=0.3)
                         st.plotly_chart(fig, use_container_width=True)
-                    else: st.info("ചിലവുകൾ ഒന്നും രേഖപ്പെടുത്തിയിട്ടില്ല.")
         except Exception as e: st.error(f"Report Error: {e}")
 
     elif page == "🤝 Debt Tracker" and curr_user != "shabana":
