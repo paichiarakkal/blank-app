@@ -15,24 +15,31 @@ FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh7
 
 USERS = {"faisal": "faisal123", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI GLASS EDITION v4.5", layout="wide")
+st.set_page_config(page_title="PAICHI TRANSPARENT EDITION v4.6", layout="wide")
 st_autorefresh(interval=60000, key="auto_refresh")
 
-# --- 2. 🎨 PREMIUM DESIGN (Purple & Transparent Glass Theme) ---
+# --- 2. 🎨 PREMIUM DESIGN (Full Transparent Glass Sidebar) ---
 st.markdown("""
     <style>
+    /* മെയിൻ പേജ് പശ്ചാത്തലം */
     .stApp {
         background: linear-gradient(135deg, #2D0844, #4B0082, #1A0521);
         color: #fff;
     }
     
-    /* 📱 TRANSPARENT GLASS SIDEBAR */
+    /* 🧊 FULL TRANSPARENT GLASS SIDEBAR */
+    /* സൈഡ് ബാറിലെ പഴയ കളറുകൾ മാറ്റി അപ്പുറം കാണാവുന്ന രീതിയിലാക്കുന്നു */
     [data-testid="stSidebar"] {
-        background: rgba(255, 255, 255, 0.05) !important;
-        backdrop-filter: blur(15px); /* ഗ്ലാസ്സ് ഇഫക്റ്റ് */
+        background-color: rgba(255, 255, 255, 0.0) !important; /* പൂർണ്ണ സുതാര്യത */
+        backdrop-filter: blur(10px); /* നേരിയ ബ്ലർ ഇഫക്റ്റ് */
         border-right: 1px solid rgba(255, 255, 255, 0.1);
     }
     
+    /* സൈഡ് ബാറിനുള്ളിലെ കണ്ടന്റ് പശ്ചാത്തലം ഒഴിവാക്കുന്നു */
+    [data-testid="stSidebar"] > div:first-child {
+        background: transparent !important;
+    }
+
     .stButton>button {
         background-color: #FFD700;
         color: #000;
@@ -169,7 +176,7 @@ else:
                     if not report_df.empty:
                         fig = px.pie(report_df, values='Debit', names=item_col, hole=0.3)
                         st.plotly_chart(fig, use_container_width=True)
-        except Exception as e: st.error("Report Loading...")
+        except Exception as e: st.error("Report Error")
 
     elif page == "🤝 Debt Tracker" and curr_user != "shabana":
         st.title("Debt Management")
