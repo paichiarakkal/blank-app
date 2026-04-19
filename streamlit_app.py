@@ -15,27 +15,25 @@ FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh7
 
 USERS = {"faisal": "faisal123", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI TRANSPARENT EDITION v4.8", layout="wide")
+st.set_page_config(page_title="PAICHI SMOKY GLASS v4.8", layout="wide")
 st_autorefresh(interval=60000, key="auto_refresh")
 
-# --- 2. 🎨 PREMIUM DESIGN (Full Transparent Glass Sidebar) ---
+# --- 2. 🎨 PREMIUM DESIGN (Smoky Glass Sidebar) ---
 st.markdown("""
     <style>
-    /* മെയിൻ പേജ് പശ്ചാത്തലം */
     .stApp {
         background: linear-gradient(135deg, #2D0844, #4B0082, #1A0521);
         color: #fff;
     }
     
-    /* 🧊 FULL TRANSPARENT GLASS SIDEBAR */
-    /* നിങ്ങളുടെ ചിത്രത്തിൽ കാണുന്നതുപോലെയുള്ള സുതാര്യത */
+    /* 🌫️ SMOKY GLASS SIDEBAR (Transparent Black) */
     [data-testid="stSidebar"] {
-        background-color: rgba(0,0,0,0.4) !important; /* Semi-transparent black */
-        backdrop-filter: blur(10px); /* നേരിയ ബ്ലർ ഇഫക്റ്റ് */
+        background-color: rgba(0, 0, 0, 0.4) !important; /* Karuppu niram pakshe transparent anu */
+        backdrop-filter: blur(15px); /* Pinnilulla karyangal kanikkaan blur nalkunnu */
         border-right: 1px solid rgba(255, 255, 255, 0.1);
     }
     
-    /* സൈഡ് ബാറിനുള്ളിലെ കണ്ടന്റ് പശ്ചാത്തലം ഒഴിവാക്കുന്നു */
+    /* Sidebar content transparency */
     [data-testid="stSidebar"] > div:first-child {
         background: transparent !important;
     }
@@ -128,9 +126,9 @@ else:
                 st.markdown(f"""
                 <div class="purple-box" style="border-color: {m['color']} !important;">
                     <h2 style="color:#E0B0FF !important; font-size:35px; margin-bottom:5px;">{m["name"]}</h2>
-                    <h1 style="color:{m["color"]} !important; font-size:65px; margin:15px 0px; text-shadow: 2px 2px 15px {m['color']};">{m["signal"]}</h1>
-                    <h1 style="color:#FFD700 !important; font-size:60px; margin-bottom:10px; text-shadow: 2px 2px 10px rgba(0,0,0,0.5);">₹{m["price"]:,.0f}</h1>
-                    <p style="color:#ffffff !important; font-size:25px; opacity: 0.8;">RSI: {m["rsi"]:.1f}</p>
+                    <h1 style="color:{m["color"]} !important; font-size:65px; margin:10px 0px;">{m["signal"]}</h1>
+                    <h1 style="color:#FFD700 !important; font-size:60px; margin-bottom:10px;">₹{m["price"]:,.0f}</h1>
+                    <p style="color:#ffffff !important; font-size:25px;">RSI: {m["rsi"]:.1f}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -144,54 +142,4 @@ else:
             balance = total_in - total_out
             st.markdown(f"""
             <div class="purple-box" style="border-color: #FFD700 !important;">
-                <p style="color:#E0B0FF !important; font-size:20px;">Net Balance</p>
-                <h1 style="color:#FFD700 !important; font-size:65px;">₹{balance:,.2f}</h1>
-            </div>
-            """, unsafe_allow_html=True)
-        except: st.error("Error loading data.")
-
-    elif page == "💰 Add Entry":
-        st.title("Add Transaction")
-        v = speech_to_text(language='ml', key='voice')
-        with st.form("entry_f", clear_on_submit=True):
-            it = st.text_input("Item Description", value=v if v else "")
-            am = st.number_input("Amount", min_value=0.0)
-            ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
-            if st.form_submit_button("SAVE DATA"):
-                if it and am > 0:
-                    d, c = (am, 0) if ty == "Debit" else (0, am)
-                    requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": f"[{curr_user.capitalize()}] {it}", "entry.1460982454": d, "entry.1221658767": c})
-                    st.success("സേവ് ചെയ്തു! ✅")
-
-    elif page == "📊 Report" and curr_user != "shabana":
-        st.title("Expense Analysis")
-        try:
-            df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
-            df.columns = df.columns.str.strip()
-            if 'Debit' in df.columns:
-                df['Debit'] = pd.to_numeric(df['Debit'], errors='coerce').fillna(0)
-                item_col = 'Item' if 'Item' in df.columns else 'item'
-                if item_col in df.columns:
-                    report_df = df[df['Debit'] > 0].groupby(item_col)['Debit'].sum().reset_index()
-                    if not report_df.empty:
-                        fig = px.pie(report_df, values='Debit', names=item_col, hole=0.3)
-                        st.plotly_chart(fig, use_container_width=True)
-        except Exception as e: st.error("Report Error")
-
-    elif page == "🤝 Debt Tracker" and curr_user != "shabana":
-        st.title("Debt Management")
-        with st.form("debt_f"):
-            n = st.text_input("Name")
-            a = st.number_input("Amount", min_value=0.0)
-            t = st.selectbox("Category", ["Borrowed (വാങ്ങി)", "Lent (കൊടുത്തു)"])
-            if st.form_submit_button("SAVE"):
-                d, c = (0, a) if "Borrowed" in t else (a, 0)
-                requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": f"[{curr_user.capitalize()}] DEBT: {t} - {n}", "entry.1460982454": d, "entry.1221658767": c})
-                st.success("രേഖപ്പെടുത്തി!")
-
-    elif page == "🔍 History" and curr_user != "shabana":
-        st.title("Transaction History")
-        try:
-            df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
-            st.dataframe(df.iloc[::-1], use_container_width=True)
-        except: st.write("Loading History...")
+                <p style="color:#E0B0FF !important; font-size:20px;">Net Balance
