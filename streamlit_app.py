@@ -13,16 +13,42 @@ CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRccfZch3jSdHqrScpqsR
 FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh77RnJKWc2-uqAM0TPNG3Q5A/formResponse"
 USERS = {"faisal": "faisal123", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI ULTIMATE v6.0", layout="wide")
+st.set_page_config(page_title="PAICHI PREMIUM v6.2", layout="wide")
 st_autorefresh(interval=30000, key="auto_refresh")
 
-# --- 2. 🎨 PREMIUM DESIGN (Transparent Black Sidebar) ---
+# --- 2. 🎨 DESIGN (Purple & Gold Theme with Transparent Sidebar) ---
 st.markdown("""
     <style>
-    .stApp { background: linear-gradient(135deg, #2D0844, #4B0082, #1A0521); color: #fff; }
-    [data-testid="stSidebar"] { background-color: rgba(0, 0, 0, 0.3) !important; backdrop-filter: blur(15px); border-right: 1px solid rgba(255, 255, 255, 0.1); }
-    .stButton>button { background-color: #FFD700; color: #000; border-radius: 10px; font-weight: bold; }
-    .purple-box { background: rgba(255, 255, 255, 0.05); padding: 30px !important; border-radius: 25px; border: 2px solid rgba(255, 215, 0, 0.3); text-align: center; margin-bottom: 25px; }
+    .stApp { 
+        background: linear-gradient(135deg, #2D0844, #4B0082, #1A0521); 
+        color: #fff; 
+    }
+    
+    /* Transparent Sidebar */
+    [data-testid="stSidebar"] { 
+        background-color: rgba(0, 0, 0, 0.3) !important; 
+        backdrop-filter: blur(15px); 
+        border-right: 1px solid rgba(255, 255, 255, 0.1); 
+    }
+    
+    /* Gold Buttons */
+    .stButton>button { 
+        background-color: #FFD700; 
+        color: #000; 
+        border-radius: 10px; 
+        font-weight: bold; 
+    }
+    
+    /* Purple Boxes */
+    .purple-box { 
+        background: rgba(255, 255, 255, 0.05); 
+        padding: 30px !important; 
+        border-radius: 25px; 
+        border: 2px solid rgba(255, 215, 0, 0.3); 
+        text-align: center; 
+        margin-bottom: 25px; 
+    }
+    
     h1, h2, h3, p, label { color: white !important; font-weight: bold !important; }
     .stDataFrame { background: white; border-radius: 10px; }
     </style>
@@ -108,29 +134,30 @@ else:
             am = st.number_input("Amount", min_value=0.0)
             ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
             if st.form_submit_button("SAVE"):
-                d, c = (am, 0) if ty == "Debit" else (0, am)
-                requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": f"[{curr_user}] {it}", "entry.1460982454": d, "entry.1221658767": c})
-                st.success("Saved!")
+                if it and am > 0:
+                    d, c = (am, 0) if ty == "Debit" else (0, am)
+                    requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": f"[{curr_user}] {it}", "entry.1460982454": d, "entry.1221658767": c})
+                    st.success("Saved!")
 
     elif page == "📊 Report":
-        st.title("Report")
+        st.title("Expense Analysis")
         try:
             df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
             df.columns = df.columns.str.strip()
             df['Debit'] = pd.to_numeric(df['Debit'], errors='coerce').fillna(0)
             fig = px.pie(df[df['Debit']>0], values='Debit', names='Item', hole=0.3)
             st.plotly_chart(fig)
-        except: st.write("No data for report")
+        except: st.write("Loading report...")
 
     elif page == "🔍 History":
-        st.title("History")
+        st.title("Transaction History")
         try:
             df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
             st.dataframe(df.iloc[::-1], use_container_width=True)
         except: st.write("Loading...")
 
     elif page == "🤝 Debt Tracker":
-        st.title("Debt Tracker")
+        st.title("Debt Management")
         with st.form("debt_f"):
             n = st.text_input("Name")
             a = st.number_input("Amount")
