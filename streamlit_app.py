@@ -15,10 +15,10 @@ FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh7
 
 USERS = {"faisal": "faisal123", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI GLASS v5.3", layout="wide")
+st.set_page_config(page_title="PAICHI TRANSPARENT BLACK v5.2", layout="wide")
 st_autorefresh(interval=60000, key="auto_refresh")
 
-# --- 2. 🎨 PREMIUM DESIGN (Super Transparent Sidebar) ---
+# --- 2. 🎨 PREMIUM DESIGN (Transparent Black Sidebar) ---
 st.markdown("""
     <style>
     .stApp {
@@ -26,10 +26,11 @@ st.markdown("""
         color: #fff;
     }
     
-    /* 📱 നിങ്ങൾ ചോദിച്ച 0.2 സുതാര്യത ഇവിടെ നൽകിയിട്ടുണ്ട് */
+    /* 📱 സുതാര്യമായ കറുത്ത സൈഡ് ബാർ */
+    /* ഇതിലൂടെ നോക്കിയാൽ മെയിൻ പേജ് കാണാൻ സാധിക്കും */
     [data-testid="stSidebar"] {
         background-color: rgba(0, 0, 0, 0.2) !important; 
-        backdrop-filter: blur(12px); /* ബ്ലർ അല്പം കൂട്ടിയിട്ടുണ്ട്, അപ്പോൾ ലുക്ക് കൂടും */
+        backdrop-filter: blur(10px);
         border-right: 1px solid rgba(255, 255, 255, 0.1);
     }
     
