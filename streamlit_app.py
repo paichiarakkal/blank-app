@@ -15,38 +15,36 @@ FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh7
 
 USERS = {"faisal": "faisal123", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI GOLD & SILVER v3.7", layout="wide")
+st.set_page_config(page_title="PAICHI PURPLE EDITION v4.0", layout="wide")
 st_autorefresh(interval=60000, key="auto_refresh")
 
-# --- 2. 🎨 PREMIUM DESIGN (Silver Sidebar & Gold Main) ---
+# --- 2. 🎨 PREMIUM DESIGN (Purple Theme) ---
 st.markdown("""
     <style>
     .stApp {
-        background: linear-gradient(135deg, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C);
-        color: #000;
+        background: linear-gradient(135deg, #4B0082, #8A2BE2, #9370DB);
+        color: #fff;
     }
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #BDBDBD, #E0E0E0, #757575) !important;
+        background: rgba(0,0,0,0.7) !important;
     }
     .stButton>button {
-        background-color: #000;
-        color: #FFD700;
+        background-color: #9370DB;
+        color: white;
         border-radius: 10px;
-        border: 2px solid #FFD700;
-        font-weight: bold;
+        border: 2px solid white;
     }
-    .metric-box {
-        background: rgba(0,0,0,0.9);
-        color: #FFD700 !important;
-        padding: 25px;
-        border-radius: 20px;
-        border: 3px solid #FFD700;
+    /* പർപ്പിൾ ബോക്സ് ഡിസൈൻ */
+    .purple-box {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 30px;
+        border-radius: 25px;
+        border: 4px solid #E0B0FF; /* Light Purple Border */
         text-align: center;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-        margin-bottom: 20px;
+        margin-bottom: 25px;
+        box-shadow: 0 12px 25px rgba(0,0,0,0.5);
     }
-    /* ഹെഡിംഗുകളുടെയും മറ്റും കളർ ഫിക്സ് ചെയ്യുന്നു */
-    h1, h2, h3, label { color: #000 !important; font-weight: bold !important; }
+    h1, h2, h3, p, label { color: white !important; font-weight: bold !important; }
     .stDataFrame { background: white; border-radius: 10px; }
     </style>
     """, unsafe_allow_html=True)
@@ -63,7 +61,6 @@ def get_triple_advisor():
             df = yf.Ticker(sym).history(period="5d", interval="5m")
             if df.empty: continue
             
-            # PIVOT & INDICATORS
             last_p = df['Close'].iloc[-1]
             h, l, c = df['High'].iloc[-2], df['Low'].iloc[-2], df['Close'].iloc[-2]
             pivot = (h + l + c) / 3
@@ -76,7 +73,7 @@ def get_triple_advisor():
             st_buy = last_p > lower_band
             
             if last_p > pivot and rsi > 55 and st_buy: signal, color = "🚀 BUY", "#00FF00"
-            elif last_p < pivot and rsi < 45 and not st_buy: signal, color = "📉 SELL", "#FF0000"
+            elif last_p < pivot and rsi < 45 and not st_buy: signal, color = "📉 SELL", "#FF3131"
             else: signal, color = "⚖️ WAIT", "#FFFF00"
             
             if name == "Crude Fut": last_p = last_p * 83.5 * 1.15
@@ -114,22 +111,14 @@ else:
         markets = get_triple_advisor()
         if markets:
             for m in markets:
-                # ഇവിടെ പ്രൈസിന്റെയും പേരിന്റെയും നിറങ്ങൾ നിർബന്ധമായും തെളിയാൻ !important ഉപയോഗിച്ചിരിക്കുന്നു
                 st.markdown(f"""
-                <div style="background: rgba(0,0,0,0.92); 
-                            padding: 30px; 
-                            border-radius: 25px; 
-                            border: 4px solid {m['color']}; 
-                            text-align: center; 
-                            margin-bottom: 25px;
-                            box-shadow: 0 12px 25px rgba(0,0,0,0.6);">
-                    <h2 style="color:white !important; margin-bottom:5px; font-size:35px; font-weight:bold;">{m["name"]}</h2>
-                    <h1 style="color:{m["color"]} !important; font-size:65px; margin:15px 0px; font-weight:black;">{m["signal"]}</h1>
-                    <h1 style="color:#FFD700 !important; font-size:60px; margin-bottom:10px; font-weight:bold;">₹{m["price"]:,.0f}</h1>
-                    <p style="color:#00e5ff !important; font-size:25px; font-weight:bold;">RSI: {m["rsi"]:.1f}</p>
+                <div class="purple-box" style="border-color: {m['color']} !important;">
+                    <h2 style="color:white !important; font-size:35px;">{m["name"]}</h2>
+                    <h1 style="color:{m["color"]} !important; font-size:65px; margin:15px 0px;">{m["signal"]}</h1>
+                    <h1 style="color:#FFFFFF !important; font-size:60px; margin-bottom:10px;">₹{m["price"]:,.0f}</h1>
+                    <p style="color:#E0B0FF !important; font-size:25px;">RSI: {m["rsi"]:.1f}</p>
                 </div>
                 """, unsafe_allow_html=True)
-        else: st.warning("Market Data loading...")
 
     elif page == "🏠 Dashboard" and curr_user != "shabana":
         st.title("Financial Status")
@@ -139,8 +128,8 @@ else:
             total_in = pd.to_numeric(df['Credit'], errors='coerce').fillna(0).sum()
             total_out = pd.to_numeric(df['Debit'], errors='coerce').fillna(0).sum()
             balance = total_in - total_out
-            st.markdown(f'<div class="metric-box"><p style="color:#aaa !important;">Balance</p><h1 style="color:#FFD700 !important; font-size:60px;">₹{balance:,.2f}</h1></div>', unsafe_allow_html=True)
-        except: st.error("Data error.")
+            st.markdown(f'<div class="purple-box"><h1 style="color:white !important; font-size:60px;">Balance: ₹{balance:,.2f}</h1></div>', unsafe_allow_html=True)
+        except: st.error("Error loading data.")
 
     elif page == "💰 Add Entry":
         st.title("Add Transaction")
@@ -166,7 +155,7 @@ else:
             if not report_df.empty:
                 fig = px.pie(report_df, values='Debit', names=item_col, hole=0.3)
                 st.plotly_chart(fig, use_container_width=True)
-        except: st.write("No report data.")
+        except: st.error("Report Error")
 
     elif page == "🤝 Debt Tracker" and curr_user != "shabana":
         st.title("Debt Management")
