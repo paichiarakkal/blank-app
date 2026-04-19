@@ -15,10 +15,10 @@ FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh7
 
 USERS = {"faisal": "faisal123", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI GOLD & SILVER v3.6", layout="wide")
+st.set_page_config(page_title="PAICHI GOLD & SILVER v3.7", layout="wide")
 st_autorefresh(interval=60000, key="auto_refresh")
 
-# --- 2. 🎨 PREMIUM DESIGN ---
+# --- 2. 🎨 PREMIUM DESIGN (Silver Sidebar & Gold Main) ---
 st.markdown("""
     <style>
     .stApp {
@@ -37,7 +37,7 @@ st.markdown("""
     }
     .metric-box {
         background: rgba(0,0,0,0.9);
-        color: #FFD700;
+        color: #FFD700 !important;
         padding: 25px;
         border-radius: 20px;
         border: 3px solid #FFD700;
@@ -45,7 +45,8 @@ st.markdown("""
         box-shadow: 0 10px 20px rgba(0,0,0,0.5);
         margin-bottom: 20px;
     }
-    h1, h2, h3, p, label { color: #000 !important; font-weight: bold !important; }
+    /* ഹെഡിംഗുകളുടെയും മറ്റും കളർ ഫിക്സ് ചെയ്യുന്നു */
+    h1, h2, h3, label { color: #000 !important; font-weight: bold !important; }
     .stDataFrame { background: white; border-radius: 10px; }
     </style>
     """, unsafe_allow_html=True)
@@ -62,18 +63,14 @@ def get_triple_advisor():
             df = yf.Ticker(sym).history(period="5d", interval="5m")
             if df.empty: continue
             
-            # PIVOT
+            # PIVOT & INDICATORS
             last_p = df['Close'].iloc[-1]
             h, l, c = df['High'].iloc[-2], df['Low'].iloc[-2], df['Close'].iloc[-2]
             pivot = (h + l + c) / 3
-            
-            # RSI
             delta = df['Close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
             rsi = 100 - (100 / (1 + (gain / loss).iloc[-1]))
-            
-            # SUPERTREND
             atr = (df['High'] - df['Low']).rolling(window=10).mean().iloc[-1]
             lower_band = ((df['High'] + df['Low']) / 2).iloc[-1] - (3 * atr)
             st_buy = last_p > lower_band
@@ -102,7 +99,6 @@ if not st.session_state.auth:
 else:
     curr_user = st.session_state.user
     st.sidebar.title(f"👤 {curr_user.capitalize()}")
-    
     if curr_user == "shabana":
         page = "💰 Add Entry"
     else:
@@ -118,6 +114,7 @@ else:
         markets = get_triple_advisor()
         if markets:
             for m in markets:
+                # ഇവിടെ പ്രൈസിന്റെയും പേരിന്റെയും നിറങ്ങൾ നിർബന്ധമായും തെളിയാൻ !important ഉപയോഗിച്ചിരിക്കുന്നു
                 st.markdown(f"""
                 <div style="background: rgba(0,0,0,0.92); 
                             padding: 30px; 
@@ -126,9 +123,9 @@ else:
                             text-align: center; 
                             margin-bottom: 25px;
                             box-shadow: 0 12px 25px rgba(0,0,0,0.6);">
-                    <h2 style="color:#ffffff !important; margin-bottom:5px; font-size:35px;">{m["name"]}</h2>
-                    <h1 style="color:{m["color"]} !important; font-size:65px; margin:15px 0px; text-shadow: 2px 2px 10px {m['color']};">{m["signal"]}</h1>
-                    <h1 style="color:#FFD700 !important; font-size:60px; margin-bottom:10px; text-shadow: 2px 2px 5px rgba(0,0,0,0.5);">₹{m["price"]:,.0f}</h1>
+                    <h2 style="color:white !important; margin-bottom:5px; font-size:35px; font-weight:bold;">{m["name"]}</h2>
+                    <h1 style="color:{m["color"]} !important; font-size:65px; margin:15px 0px; font-weight:black;">{m["signal"]}</h1>
+                    <h1 style="color:#FFD700 !important; font-size:60px; margin-bottom:10px; font-weight:bold;">₹{m["price"]:,.0f}</h1>
                     <p style="color:#00e5ff !important; font-size:25px; font-weight:bold;">RSI: {m["rsi"]:.1f}</p>
                 </div>
                 """, unsafe_allow_html=True)
@@ -142,13 +139,8 @@ else:
             total_in = pd.to_numeric(df['Credit'], errors='coerce').fillna(0).sum()
             total_out = pd.to_numeric(df['Debit'], errors='coerce').fillna(0).sum()
             balance = total_in - total_out
-            st.markdown(f"""
-            <div class="metric-box">
-                <p style="color:#aaa !important; font-size:20px;">കയ്യിലുള്ള ബാക്കി തുക</p>
-                <h1 style="color:#FFD700 !important; font-size:60px;">₹{balance:,.2f}</h1>
-            </div>
-            """, unsafe_allow_html=True)
-        except: st.error("Data loading error.")
+            st.markdown(f'<div class="metric-box"><p style="color:#aaa !important;">Balance</p><h1 style="color:#FFD700 !important; font-size:60px;">₹{balance:,.2f}</h1></div>', unsafe_allow_html=True)
+        except: st.error("Data error.")
 
     elif page == "💰 Add Entry":
         st.title("Add Transaction")
@@ -168,30 +160,28 @@ else:
         try:
             df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
             df.columns = df.columns.str.strip()
-            if 'Debit' in df.columns:
-                df['Debit'] = pd.to_numeric(df['Debit'], errors='coerce').fillna(0)
-                item_col = 'Item' if 'Item' in df.columns else 'item'
-                if item_col in df.columns:
-                    report_df = df[df['Debit'] > 0].groupby(item_col)['Debit'].sum().reset_index()
-                    if not report_df.empty:
-                        fig = px.pie(report_df, values='Debit', names=item_col, hole=0.3)
-                        st.plotly_chart(fig, use_container_width=True)
-        except Exception as e: st.error(f"Report Error: {e}")
+            df['Debit'] = pd.to_numeric(df['Debit'], errors='coerce').fillna(0)
+            item_col = 'Item' if 'Item' in df.columns else 'item'
+            report_df = df[df['Debit'] > 0].groupby(item_col)['Debit'].sum().reset_index()
+            if not report_df.empty:
+                fig = px.pie(report_df, values='Debit', names=item_col, hole=0.3)
+                st.plotly_chart(fig, use_container_width=True)
+        except: st.write("No report data.")
 
     elif page == "🤝 Debt Tracker" and curr_user != "shabana":
         st.title("Debt Management")
-        with st.form("debt_form"):
+        with st.form("debt_f"):
             n = st.text_input("Name")
             a = st.number_input("Amount", min_value=0.0)
             t = st.selectbox("Category", ["Borrowed (വാങ്ങി)", "Lent (കൊടുത്തു)"])
             if st.form_submit_button("SAVE"):
                 d, c = (0, a) if "Borrowed" in t else (a, 0)
                 requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": f"[{curr_user.capitalize()}] DEBT: {t} - {n}", "entry.1460982454": d, "entry.1221658767": c})
-                st.success("കടം വിവരങ്ങൾ രേഖപ്പെടുത്തി!")
+                st.success("രേഖപ്പെടുത്തി!")
 
     elif page == "🔍 History" and curr_user != "shabana":
         st.title("Transaction History")
         try:
             df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
             st.dataframe(df.iloc[::-1], use_container_width=True)
-        except: st.write("Data loading...")
+        except: st.write("Loading...")
