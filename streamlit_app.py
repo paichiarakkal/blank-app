@@ -12,31 +12,39 @@ CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRccfZch3jSdHqrScpqsR
 FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh77RnJKWc2-uqAM0TPNG3Q5A/formResponse"
 USERS = {"faisal": "faisal147", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI v21.0 - LEARN & TRADE", layout="wide")
+st.set_page_config(page_title="PAICHI v22.0", layout="wide")
 st_autorefresh(interval=60000, key="refresh")
 
 # --- 2. THEME ---
 st.markdown("""<style>
     .stApp { background: linear-gradient(135deg, #1A0521, #001F3F); color: #fff; }
     .purple-box { background: rgba(255,255,255,0.08); padding: 15px; border-radius: 12px; border: 1px solid #00D4FF; margin-bottom: 10px; }
-    .code-box { background: #000; color: #00FF00; padding: 10px; border-radius: 5px; font-family: monospace; }
     h1, h2, h3 { color: #00D4FF !important; }
 </style>""", unsafe_allow_html=True)
 
-# --- 3. DATA & SIGNALS (Simplified) ---
+# --- 3. DATA ENGINE (SUPER RELIABLE) ---
 def load_data():
     try:
-        df = pd.read_csv(f"{CSV_URL}&r={datetime.now().microsecond}")
-        df.columns = df.columns.str.strip()
+        # നേരിട്ട് ഷീറ്റിൽ നിന്ന് ലേറ്റസ്റ്റ് ഡാറ്റ എടുക്കുന്നു
+        df = pd.read_csv(f"{CSV_URL}&r={datetime.now().second}")
+        df.columns = df.columns.str.strip() # സ്പേസ് ഒഴിവാക്കാൻ
+        
+        # തീയതി ഫോർമാറ്റ് ശരിയാക്കുന്നു (D/M/Y)
         df['Date'] = pd.to_datetime(df['Date'], dayfirst=True, errors='coerce')
+        
+        # നമ്പറുകൾ ശരിയാക്കുന്നു
+        for col in ['Debit', 'Credit', 'Amount']:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
         return df
-    except: return None
+    except Exception as e:
+        return None
 
-def get_market():
+def get_market_signals():
     out = []
     for n, s in {"Nifty": "^NSEI", "BankNifty": "^NSEBANK", "Crude": "CL=F"}.items():
         try:
-            d = yf.Ticker(s).history(period="1d")
+            d = yf.Ticker(s).history(period="2d", interval="5m")
             lp = d['Close'].iloc[-1]
             if n == "Crude": lp *= 83.5
             out.append({"n": n, "p": lp})
@@ -52,62 +60,56 @@ if not st.session_state.auth:
     if st.button("LOGIN"):
         if USERS.get(u) == p: st.session_state.auth, st.session_state.user = True, u; st.rerun()
 else:
-    # പുതിയ മെനു "🐍 Learn Python" ഇവിടെ ചേർത്തു
-    page = st.sidebar.radio("Menu", ["🐍 Learn Python", "📊 Advisor", "🏠 Dashboard", "💰 Add Entry"])
+    page = st.sidebar.radio("Menu", ["🔍 History", "🏠 Dashboard", "📊 Advisor", "💰 Add Entry", "🐍 Learn Python"])
     df = load_data()
 
-    # --- PYTHON LEARNING SECTION ---
-    if page == "🐍 Learn Python":
-        st.title("Python Automation Lab 🚀")
-        st.write("നമുക്ക് പൈത്തൺ പഠിച്ചു തുടങ്ങാം! ഇന്ന് നിനക്ക് വേണ്ടത് എന്താണ്?")
-        
-        tab1, tab2 = st.tabs(["📚 Basics", "🤖 Trading Bot Logic"])
-        
-        with tab1:
-            st.markdown("""
-            <div class="purple-box">
-            <h3>Daily Lesson: Variables</h3>
-            <p>പൈത്തണിൽ വിവരങ്ങൾ സൂക്ഷിച്ചു വെക്കുന്ന പെട്ടികളാണ് Variables.</p>
-            <div class="code-box">
-            profit = 500 <br>
-            item = "Crude Oil" <br>
-            print(f"Today's {item} profit is {profit}")
-            </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with tab2:
-            st.markdown("""
-            <div class="purple-box">
-            <h3>How Trading Bots Work?</h3>
-            <p>ഒരു ബോട്ട് എങ്ങനെയാണ് തീരുമാനമെടുക്കുന്നത് എന്ന് നോക്കൂ:</p>
-            <div class="code-box">
-            if current_price > pivot_point:<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;print("🚀 BUY SIGNAL")<br>
-            else:<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;print("📉 SELL SIGNAL")
-            </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-    elif page == "📊 Advisor":
-        st.title("Market Signals")
-        for m in get_market():
-            st.markdown(f'<div class="purple-box"><h3>{m["n"]}</h3><h2>₹{m["p"]:,.2f}</h2></div>', unsafe_allow_html=True)
+    if page == "🔍 History":
+        st.title("Transaction History")
+        if df is not None:
+            # ഡാറ്റ ഉണ്ടോ എന്ന് നോക്കി മാത്രം ഡിസ്പ്ലേ ചെയ്യുന്നു
+            st.dataframe(df.sort_values(by='Date', ascending=False), use_container_width=True)
+        else:
+            st.error("ഷീറ്റിൽ നിന്ന് ഡാറ്റ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.")
 
     elif page == "🏠 Dashboard":
-        if df is not None:
-            st.subheader("P&L Graph")
-            # Simple visualization
-            st.line_chart(df[['Date', 'Debit', 'Credit']].set_index('Date'))
+        st.title("Profit & Loss Analysis")
+        if df is not None and not df.empty:
+            df['Net'] = df['Credit'] - df['Debit']
+            daily = df.groupby('Date')['Net'].sum().reset_index()
+            st.plotly_chart(px.line(daily, x='Date', y='Net', title="Daily Performance", markers=True), use_container_width=True)
+            
+            # Category Pie Chart
+            df['Cat'] = df['Item'].str.extract(r'\[(.*?)\]').fillna("Other")
+            pie_data = df[df['Debit'] > 0].groupby('Cat')['Debit'].sum().reset_index()
+            if not pie_data.empty:
+                st.plotly_chart(px.pie(pie_data, values='Debit', names='Cat', hole=.4, title="Spending"), use_container_width=True)
+
+    elif page == "📊 Advisor":
+        st.title("Market Prices")
+        for m in get_market_signals():
+            st.markdown(f'<div class="purple-box"><h3>{m["n"]}</h3><h2>₹{m["p"]:,.2f}</h2></div>', unsafe_allow_html=True)
 
     elif page == "💰 Add Entry":
-        st.title("New Entry")
-        with st.form("entry"):
-            it = st.text_input("Item")
-            am = st.number_input("Amount", min_value=1)
-            cat = st.selectbox("Category", ["Food", "Trading", "Salary", "Other"])
+        st.title("New Transaction")
+        bal = (df['Credit'].sum() - df['Debit'].sum()) if df is not None else 0
+        st.markdown(f'<div class="purple-box"><h2>Balance: ₹{bal:,.0f}</h2></div>', unsafe_allow_html=True)
+        v = speech_to_text(language='ml', key='v')
+        with st.form("entry_form"):
+            it, am = st.text_input("Item", v if v else ""), st.number_input("Amount", min_value=1)
+            cat = st.selectbox("Category", ["Food", "Trading", "Rent", "Salary", "Other"])
             if st.form_submit_button("SAVE"):
-                st.success("Saving logic is active!")
+                if it and am:
+                    ty = "Credit" if cat == "Salary" else "Debit"
+                    requests.post(FORM_API, data={
+                        "entry.1044099436": datetime.now().strftime("%d/%m/%Y"),
+                        "entry.2013476337": f"[{cat}] {it}",
+                        "entry.1460982454": am if ty=="Debit" else 0,
+                        "entry.1221658767": am if ty=="Credit" else 0
+                    })
+                    st.success("സേവ് ചെയ്തു! റീഫ്രഷ് ചെയ്യൂ."); st.rerun()
+
+    elif page == "🐍 Learn Python":
+        st.title("Python Lab")
+        st.info("നമുക്ക് കോഡിംഗ് പഠിക്കാം! പൈത്തണിലെ ലിസ്റ്റുകളും ഡിക്ഷണറികളും അടുത്ത പാഠത്തിൽ വരുന്നു.")
 
     if st.sidebar.button("Logout"): st.session_state.auth = False; st.rerun()
