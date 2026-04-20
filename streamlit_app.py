@@ -13,7 +13,7 @@ CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRccfZch3jSdHqrScpqsR
 FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh77RnJKWc2-uqAM0TPNG3Q5A/formResponse"
 USERS = {"faisal": "faisal147", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI v13.0 - PRO TRACKER", layout="wide")
+st.set_page_config(page_title="PAICHI v14.0 - PRO TRACKER", layout="wide")
 st_autorefresh(interval=30000, key="auto_refresh")
 
 # --- 2. 🎨 DESIGN ---
@@ -39,7 +39,9 @@ def get_data():
     try:
         df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
         df.columns = df.columns.str.strip()
-        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+        # ഷീറ്റിലെ തീയതി കോളം ഫോർമാറ്റ് ചെയ്യുന്നു
+        df['Date'] = pd.to_datetime(df['Date'], dayfirst=True, errors='coerce')
+        # നിന്റെ ഷീറ്റിലെ 'Debit', 'Credit' കോളങ്ങൾ നമ്പർ ആക്കുന്നു
         df['Credit'] = pd.to_numeric(df['Credit'], errors='coerce').fillna(0)
         df['Debit'] = pd.to_numeric(df['Debit'], errors='coerce').fillna(0)
         return df
@@ -47,10 +49,11 @@ def get_data():
 
 # --- 4. APP LOGIC ---
 if not st.session_state.auth:
-    st.title("🔐 PAICHI LOGIN")
+    st.title("🔐 PAICHI FINANCE LOGIN")
     u = st.text_input("Username").lower(); p = st.text_input("Password", type="password")
     if st.button("LOGIN"):
         if USERS.get(u) == p: st.session_state.auth, st.session_state.user = True, u; st.rerun()
+        else: st.error("Access Denied!")
 else:
     curr_user = st.session_state.user
     if curr_user == "shabana": page = "💰 Add Entry"
@@ -58,60 +61,57 @@ else:
         st.sidebar.title(f"👤 {curr_user.capitalize()}")
         page = st.sidebar.radio("Menu", ["🏠 Dashboard", "📊 Advisor", "💰 Add Entry", "🔍 History"])
 
-    # --- ADD ENTRY PAGE ---
+    df = get_data()
+
     if page == "💰 Add Entry":
-        st.title("Quick Transaction")
-        df = get_data()
+        st.title("Add Transaction")
         bal = (df['Credit'].sum() - df['Debit'].sum()) if df is not None else 0
-        st.markdown(f'<div class="purple-box" style="border-color:#FFD700;"><h3>Net Balance</h3><h1 style="color:#FFD700;">₹{bal:,.0f}</h1></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="purple-box" style="border-color:#FFD700;"><h3>Balance</h3><h1 style="color:#FFD700;">₹{bal:,.0f}</h1></div>', unsafe_allow_html=True)
         
         v = speech_to_text(language='ml', key='voice')
-        with st.form("entry_form_v13", clear_on_submit=True):
-            it = st.text_input("Details", value=v if v else "")
+        with st.form("entry_form_v14", clear_on_submit=True):
+            it = st.text_input("Item Description", value=v if v else "")
             am = st.number_input("Amount", min_value=1, value=None, placeholder="Enter amount")
+            cat = st.selectbox("Category", ["Trading", "Food", "Rent", "Salary", "Shopping", "Others"])
+            ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
             
-            # --- Categorization ---
-            cat = st.selectbox("Category", ["Trading Profit", "Trading Loss", "Food", "Rent", "Salary", "Others"])
-            ty = "Credit" if "Profit" in cat or "Salary" in cat else "Debit"
-            
-            if st.form_submit_button("SAVE DATA"):
+            if st.form_submit_button("SAVE TO SHEET"):
                 if it and am:
                     d, c = (am, 0) if ty == "Debit" else (0, am)
+                    # നിന്റെ ഷീറ്റിലെ കോളങ്ങളിലേക്ക് ഡാറ്റ അയക്കുന്നു
                     requests.post(FORM_API, data={
-                        "entry.1044099436": datetime.now().strftime("%Y-%m-%d"),
-                        "entry.2013476337": f"[{cat}] {it}",
-                        "entry.1460982454": d,
-                        "entry.1221658767": c
+                        "entry.1044099436": datetime.now().strftime("%d/%m/%Y"), # തീയതി
+                        "entry.2013476337": f"[{cat}] {it}", # ഐറ്റം വിവരങ്ങൾ
+                        "entry.1460982454": d, # Debit
+                        "entry.1221658767": c  # Credit
                     })
-                    st.success(f"{cat} സേവ് ചെയ്തു! ✅")
+                    st.success("വിജയകരമായി സേവ് ചെയ്തു! ✅")
                     st.rerun()
 
-    # --- DASHBOARD WITH P&L TRACKER ---
     elif page == "🏠 Dashboard" and curr_user != "shabana":
-        st.title("📈 Profit & Loss Tracker")
-        df = get_data()
+        st.title("📈 Performance Tracker")
         if df is not None:
-            # Profit/Loss Chart
-            df_trading = df[df['Details'].str.contains("Trading", na=False)]
-            if not df_trading.empty:
-                fig = px.line(df_trading, x='Date', y=df_trading['Credit'] - df_trading['Debit'], 
-                             title="Trading P&L Performance", markers=True)
-                fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color="white")
-                st.plotly_chart(fig, use_container_width=True)
+            # 1. Net Profit/Loss Chart
+            df['Net'] = df['Credit'] - df['Debit']
+            # തീയതി അനുസരിച്ച് ഗ്രൂപ്പ് ചെയ്യുന്നു
+            daily_df = df.groupby('Date')['Net'].sum().reset_index().sort_values('Date')
             
-            # Expense Distribution (Pie Chart)
-            st.subheader("Expense Categories")
-            # Details-ൽ ഉള്ള ബ്രാക്കറ്റിലെ കാറ്റഗറി എടുക്കുന്നു
-            df['Cat'] = df['Details'].str.extract(r'\[(.*?)\]')
-            exp_df = df[df['Debit'] > 0].groupby('Cat')['Debit'].sum().reset_index()
-            if not exp_df.empty:
-                fig_pie = px.pie(exp_df, values='Debit', names='Cat', hole=.3)
+            fig = px.line(daily_df, x='Date', y='Net', title="Daily Profit/Loss Trend", markers=True)
+            fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color="white")
+            st.plotly_chart(fig, use_container_width=True)
+
+            # 2. Category Wise Splitting
+            st.subheader("Expense Distribution")
+            df['Cat'] = df['Item'].str.extract(r'\[(.*?)\]').fillna("Others")
+            cat_df = df[df['Debit'] > 0].groupby('Cat')['Debit'].sum().reset_index()
+            if not cat_df.empty:
+                fig_pie = px.pie(cat_df, values='Debit', names='Cat', hole=.4)
                 fig_pie.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="white")
                 st.plotly_chart(fig_pie, use_container_width=True)
 
-    elif page == "📊 Advisor":
-        # നിന്റെ പഴയ Advisor ലോജിക് ഇവിടെ തുടരും
-        st.write("Trading signals load here...")
+    elif page == "🔍 History":
+        st.title("History")
+        st.dataframe(df.iloc[::-1], use_container_width=True)
 
     if st.sidebar.button("Logout"):
         st.session_state.auth = False; st.rerun()
