@@ -68,28 +68,25 @@ def process_voice(text):
     clean_desc = re.sub(r'\d+', '', raw_text).strip()
     
     category = "Others"
-    if any(x in raw_text for x in ["food", "ഭക്ഷണം", "ഹോട്ടൽ", "ചായ", "tea", "coffee", "biriyani"]): category = "Food"
-    elif any(x in raw_text for x in ["shop", "കട", "സാധനം", "ഡ്രസ്സ്", "dress", "shopping"]): category = "Shop"
-    elif any(x in raw_text for x in ["fish", "മീൻ", "മത്തി"]): category = "Fish"
-    elif any(x in raw_text for x in ["travel", "യാത്ര", "ബസ്", "പെട്രോൾ", "diesel", "auto"]): category = "Travel"
-    elif any(x in raw_text for x in ["chicken", "ചിക്കൻ", "കോഴി"]): category = "Chicken"
+    if any(x in raw_text for x in ["food", "ഭക്ഷണം", "ഹോട്ടൽ", "ചായ", "tea", "coffee"]): category = "Food"
+    elif any(x in raw_text for x in ["shop", "കട", "സാധനം", "ഡ്രസ്സ്", "dress"]): category = "Shop"
+    elif any(x in raw_text for x in ["fish", "മീൻ"]): category = "Fish"
+    elif any(x in raw_text for x in ["travel", "യാത്ര", "ബസ്", "പെട്രോൾ"]): category = "Travel"
+    elif any(x in raw_text for x in ["chicken", "ചിക്കൻ"]): category = "Chicken"
     elif any(x in raw_text for x in ["rent", "വാടക"]): category = "Rent"
-    elif any(x in raw_text for x in ["shabana", "ട്രേഡിംഗ്", "profit", "loss"]): category = "shabana"
+    # Trading ഇവിടെ ഒഴിവാക്കി
     
     return category, amount, clean_desc
 
 def create_pdf(df):
     try:
         pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", 'B', 16)
-        pdf.cell(190, 10, txt="PAICHI FINANCE REPORT", ln=True, align='C')
-        pdf.ln(10)
-        pdf.set_font("Arial", 'B', 10)
+        pdf.add_page(); pdf.set_font("Arial", 'B', 16)
+        pdf.cell(190, 10, txt="PAICHI FINANCE REPORT", ln=True, align='C'); pdf.ln(10)
         cols = df.columns.tolist()
+        pdf.set_font("Arial", 'B', 10)
         for col in cols: pdf.cell(38, 10, txt=str(col), border=1)
-        pdf.ln()
-        pdf.set_font("Arial", size=9)
+        pdf.ln(); pdf.set_font("Arial", size=9)
         for i, row in df.iterrows():
             for col in cols:
                 val = str(row[col]).encode('ascii', 'ignore').decode('ascii')
@@ -133,7 +130,6 @@ if not st.session_state.auth:
 else:
     curr_user = st.session_state.user
     
-    # ബാലൻസ് ഹെഡ്ഡർ
     balance = get_total_balance()
     st.markdown(f"""<div class="balance-banner">
         <span style="font-size:18px; color:#E0B0FF;">Available Balance</span><br>
@@ -174,15 +170,18 @@ else:
 
     elif page == "💰 Add Entry":
         st.title("Smart Voice Entry 🎙️")
-        v_raw = speech_to_text(language='ml', key='voice_final_v1')
+        v_raw = speech_to_text(language='ml', key='voice_final_v5')
         v_cat, v_amt, v_desc = process_voice(v_raw)
         if v_raw: st.info(f"Detected: {v_cat} | Amount: {v_amt}")
 
         with st.form("entry_form", clear_on_submit=True):
             it = st.text_input("Description", value=v_desc if v_desc else "")
             am = st.number_input("Amount", min_value=0.0, value=v_amt)
-            cat_list = ["Food", "Shop", "Fish", "Travel", "Chicken", "Rent", "Trading", "Others"]
-            cat = st.selectbox("Category", cat_list, index=cat_list.index(v_cat) if v_cat in cat_list else 7)
+            
+            # Trading ഒഴിവാക്കിയ ലിസ്റ്റ്
+            cat_list = ["Food", "Shop", "Fish", "Travel", "Chicken", "Rent", "Others"]
+            cat = st.selectbox("Category", cat_list, index=cat_list.index(v_cat) if v_cat in cat_list else 6)
+            
             ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
             if st.form_submit_button("SAVE DATA"):
                 if it and am > 0:
@@ -200,7 +199,7 @@ else:
             df['Category'] = df['Item'].apply(lambda x: str(x).split(':')[0] if ':' in str(x) else 'Other')
             report_df = df[df['Debit'] > 0].groupby('Category')['Debit'].sum().reset_index()
             fig = px.pie(report_df, values='Debit', names='Category', hole=0.4)
-            st.plotly_chart(fig, use_width=True)
+            st.plotly_chart(fig, use_container_width=True)
         except: st.error("Report generation failed")
 
     elif page == "🔍 History":
