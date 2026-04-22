@@ -52,7 +52,6 @@ if 'user' not in st.session_state: st.session_state.user = ""
 # --- 3. 📊 SMART ENGINES ---
 
 def get_total_balance():
-    """ഷീറ്റിൽ നിന്ന് ടോട്ടൽ ബാലൻസ് കണക്കാക്കുന്നു"""
     try:
         df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
         df.columns = df.columns.str.strip()
@@ -69,25 +68,28 @@ def process_voice(text):
     clean_desc = re.sub(r'\d+', '', raw_text).strip()
     
     category = "Others"
-    if any(x in raw_text for x in ["food", "ഭക്ഷണം", "ഹോട്ടൽ", "ചായ", "tea", "coffee"]): category = "Food"
-    elif any(x in raw_text for x in ["shop", "കട", "സാധനം", "ഡ്രസ്സ്", "dress"]): category = "Shop"
-    elif any(x in raw_text for x in ["fish", "മീൻ"]): category = "Fish"
-    elif any(x in raw_text for x in ["travel", "യാത്ര", "ബസ്", "പെട്രോൾ"]): category = "Travel"
-    elif any(x in raw_text for x in ["chicken", "ചിക്കൻ"]): category = "Chicken"
-    elif any(x in raw_text for x in ["trading", "ട്രേഡിംഗ്"]): category = "Trading"
+    if any(x in raw_text for x in ["food", "ഭക്ഷണം", "ഹോട്ടൽ", "ചായ", "tea", "coffee", "biriyani"]): category = "Food"
+    elif any(x in raw_text for x in ["shop", "കട", "സാധനം", "ഡ്രസ്സ്", "dress", "shopping"]): category = "Shop"
+    elif any(x in raw_text for x in ["fish", "മീൻ", "മത്തി"]): category = "Fish"
+    elif any(x in raw_text for x in ["travel", "യാത്ര", "ബസ്", "പെട്രോൾ", "diesel", "auto"]): category = "Travel"
+    elif any(x in raw_text for x in ["chicken", "ചിക്കൻ", "കോഴി"]): category = "Chicken"
+    elif any(x in raw_text for x in ["rent", "വാടക"]): category = "Rent"
+    elif any(x in raw_text for x in ["trading", "ട്രേഡിംഗ്", "profit", "loss"]): category = "Trading"
     
     return category, amount, clean_desc
 
-# (create_pdf, get_triple_advisor ഫങ്ക്ഷനുകൾ ഇവിടെ പഴയതുപോലെ തന്നെ തുടരുന്നു...)
 def create_pdf(df):
     try:
         pdf = FPDF()
-        pdf.add_page(); pdf.set_font("Arial", 'B', 16)
-        pdf.cell(190, 10, txt="PAICHI FINANCE REPORT", ln=True, align='C'); pdf.ln(10)
-        cols = df.columns.tolist()
+        pdf.add_page()
+        pdf.set_font("Arial", 'B', 16)
+        pdf.cell(190, 10, txt="PAICHI FINANCE REPORT", ln=True, align='C')
+        pdf.ln(10)
         pdf.set_font("Arial", 'B', 10)
+        cols = df.columns.tolist()
         for col in cols: pdf.cell(38, 10, txt=str(col), border=1)
-        pdf.ln(); pdf.set_font("Arial", size=9)
+        pdf.ln()
+        pdf.set_font("Arial", size=9)
         for i, row in df.iterrows():
             for col in cols:
                 val = str(row[col]).encode('ascii', 'ignore').decode('ascii')
@@ -106,12 +108,15 @@ def get_triple_advisor():
             last_p = df['Close'].iloc[-1]
             h, l, c = df['High'].iloc[-2], df['Low'].iloc[-2], df['Close'].iloc[-2]
             pivot = (h + l + c) / 3
-            rsi = 100 - (100 / (1 + (df['Close'].diff().where(df['Close'].diff() > 0, 0).rolling(14).mean() / -df['Close'].diff().where(df['Close'].diff() < 0, 0).rolling(14).mean()).iloc[-1]))
-            if last_p > pivot and rsi > 55: sig, col = "🚀 BUY", "#00FF00"
-            elif last_p < pivot and rsi < 45: sig, col = "📉 SELL", "#FF3131"
-            else: sig, col = "⚖️ WAIT", "#FFFF00"
-            if name == "Crude Fut": last_p *= 83.5 * 1.15
-            results.append({"name": name, "price": last_p, "signal": sig, "rsi": rsi, "color": col})
+            delta = df['Close'].diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+            rsi = 100 - (100 / (1 + (gain / loss).iloc[-1]))
+            if last_p > pivot and rsi > 55: signal, color = "🚀 BUY", "#00FF00"
+            elif last_p < pivot and rsi < 45: signal, color = "📉 SELL", "#FF3131"
+            else: signal, color = "⚖️ WAIT", "#FFFF00"
+            if name == "Crude Fut": last_p = last_p * 83.5 * 1.15
+            results.append({"name": name, "price": last_p, "signal": signal, "rsi": rsi, "color": color})
         return results
     except: return None
 
@@ -128,28 +133,49 @@ if not st.session_state.auth:
 else:
     curr_user = st.session_state.user
     
-    # --- 🟢 ഹെഡ്ഡറിൽ ബാലൻസ് കാണിക്കുന്നു ---
+    # ബാലൻസ് ഹെഡ്ഡർ
     balance = get_total_balance()
-    st.markdown(f"""
-        <div class="balance-banner">
-            <span style="font-size:18px; color:#E0B0FF;">Available Balance</span><br>
-            <span style="font-size:32px; color:#FFD700;">₹{balance:,.2f}</span>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"""<div class="balance-banner">
+        <span style="font-size:18px; color:#E0B0FF;">Available Balance</span><br>
+        <span style="font-size:32px; color:#FFD700;">₹{balance:,.2f}</span>
+    </div>""", unsafe_allow_html=True)
 
-    # സൈഡ്‌ബാർ മെനു
     if curr_user == "shabana": page = "💰 Add Entry"
     else: page = st.sidebar.radio("Menu", ["📊 Advisor", "🏠 Dashboard", "💰 Add Entry", "📊 Report", "🔍 History", "🤝 Debt Tracker"])
 
     if st.sidebar.button("Logout"):
         st.session_state.auth = False; st.rerun()
 
-    # --- Add Entry Page (Smart Voice) ---
-    if page == "💰 Add Entry":
+    # --- PAGES ---
+    if page == "📊 Advisor":
+        st.title("🚀 Smart Trading Terminal")
+        markets = get_triple_advisor()
+        if markets:
+            for m in markets:
+                st.markdown(f"""<div class="purple-box" style="border-color: {m['color']} !important;">
+                    <h2 style="color:#E0B0FF !important;">{m["name"]}</h2>
+                    <h1 style="color:{m["color"]} !important; font-size:55px;">{m["signal"]}</h1>
+                    <h1 style="color:#FFD700 !important; font-size:50px;">₹{m["price"]:,.0f}</h1>
+                    <p>RSI: {m["rsi"]:.1f}</p>
+                </div>""", unsafe_allow_html=True)
+
+    elif page == "🏠 Dashboard":
+        st.title("Financial Overview")
+        try:
+            df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
+            df.columns = df.columns.str.strip()
+            total_in = pd.to_numeric(df['Credit'], errors='coerce').fillna(0).sum()
+            total_out = pd.to_numeric(df['Debit'], errors='coerce').fillna(0).sum()
+            st.markdown(f"""<div class="purple-box">
+                <h3>Total Credit: ₹{total_in:,.2f}</h3>
+                <h3>Total Debit: ₹{total_out:,.2f}</h3>
+            </div>""", unsafe_allow_html=True)
+        except: st.error("Data loading error")
+
+    elif page == "💰 Add Entry":
         st.title("Smart Voice Entry 🎙️")
-        v_raw = speech_to_text(language='ml', key='voice_v4')
+        v_raw = speech_to_text(language='ml', key='voice_final_v1')
         v_cat, v_amt, v_desc = process_voice(v_raw)
-        
         if v_raw: st.info(f"Detected: {v_cat} | Amount: {v_amt}")
 
         with st.form("entry_form", clear_on_submit=True):
@@ -158,16 +184,41 @@ else:
             cat_list = ["Food", "Shop", "Fish", "Travel", "Chicken", "Rent", "Trading", "Others"]
             cat = st.selectbox("Category", cat_list, index=cat_list.index(v_cat) if v_cat in cat_list else 7)
             ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
-            
             if st.form_submit_button("SAVE DATA"):
                 if it and am > 0:
                     d, c = (am, 0) if ty == "Debit" else (0, am)
                     full_desc = f"[{curr_user.capitalize()}] {cat}: {it}"
                     requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": full_desc, "entry.1460982454": d, "entry.1221658767": c})
-                    st.success("Saved! ✅")
-                    st.rerun()
+                    st.success("Saved! ✅"); st.rerun()
 
-    # ... (ബാക്കി പേജുകൾ Dashboard, Advisor, History എല്ലാം പഴയതുപോലെ തന്നെ തുടരും)
-    elif page == "🏠 Dashboard" and curr_user != "shabana":
-        st.title("Financial Overview")
-        st.write("Check your total balance and summaries here.")
+    elif page == "📊 Report":
+        st.title("Expense Analysis")
+        try:
+            df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
+            df.columns = df.columns.str.strip()
+            df['Debit'] = pd.to_numeric(df['Debit'], errors='coerce').fillna(0)
+            df['Category'] = df['Item'].apply(lambda x: str(x).split(':')[0] if ':' in str(x) else 'Other')
+            report_df = df[df['Debit'] > 0].groupby('Category')['Debit'].sum().reset_index()
+            fig = px.pie(report_df, values='Debit', names='Category', hole=0.4)
+            st.plotly_chart(fig, use_width=True)
+        except: st.error("Report generation failed")
+
+    elif page == "🔍 History":
+        st.title("Transaction History")
+        try:
+            df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
+            df.columns = df.columns.str.strip()
+            pdf_bytes = create_pdf(df)
+            if pdf_bytes: st.download_button("📥 Download PDF", pdf_bytes, "Report.pdf", "application/pdf")
+            st.dataframe(df.iloc[::-1], use_container_width=True)
+        except: st.write("No history found.")
+
+    elif page == "🤝 Debt Tracker":
+        st.title("Debt Management")
+        with st.form("debt_form"):
+            n, a = st.text_input("Name"), st.number_input("Amount", min_value=0.0)
+            t = st.selectbox("Category", ["Borrowed", "Lent"])
+            if st.form_submit_button("SAVE"):
+                d, c = (0, a) if "Borrowed" in t else (a, 0)
+                requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": f"[{curr_user.capitalize()}] DEBT: {t} - {n}", "entry.1460982454": d, "entry.1221658767": c})
+                st.success("Debt Saved! ✅")
