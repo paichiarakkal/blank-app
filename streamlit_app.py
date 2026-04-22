@@ -27,24 +27,14 @@ st.markdown("""
         background: linear-gradient(135deg, #2D0844, #4B0082, #1A0521);
         color: #fff;
     }
-    [data-testid="stSidebar"] {
-        background: rgba(0,0,0,0.85) !important;
-    }
+    [data-testid="stSidebar"] { background: rgba(0,0,0,0.85) !important; }
     .stButton>button {
-        background-color: #FFD700;
-        color: #000;
-        border-radius: 10px;
-        border: none;
-        font-weight: bold;
+        background-color: #FFD700; color: #000; border-radius: 10px; font-weight: bold;
     }
     .purple-box {
         background: rgba(255, 255, 255, 0.05);
-        padding: 20px;
-        border-radius: 25px;
-        border: 2px solid rgba(255, 215, 0, 0.3);
-        text-align: center;
-        margin-bottom: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        padding: 20px; border-radius: 25px; border: 2px solid rgba(255, 215, 0, 0.3);
+        text-align: center; margin-bottom: 20px;
     }
     h1, h2, h3, p, label { color: white !important; font-weight: bold !important; }
     .stDataFrame { background: white; border-radius: 10px; }
@@ -57,7 +47,7 @@ if 'user' not in st.session_state: st.session_state.user = ""
 # --- 3. 📊 SMART ENGINES ---
 
 def process_voice(text):
-    """വോയ്‌സിൽ നിന്ന് കാറ്റഗറിയും എമൗണ്ടും വേർതിരിക്കുന്നു"""
+    """വോയ്‌സിൽ നിന്ന് വിവരങ്ങൾ വേർതിരിക്കുന്നു (Updated with more keywords)"""
     if not text: return "Others", None
     text = text.lower()
     
@@ -65,35 +55,37 @@ def process_voice(text):
     nums = re.findall(r'\d+', text)
     amount = float(nums[0]) if nums else None
     
-    # കാറ്റഗറി കണ്ടെത്തുന്നു
+    # കാറ്റഗറി മാപ്പിംഗ്
     category = "Others"
-    if any(x in text for x in ["food", "ഭക്ഷണം", "ഹോട്ടൽ"]): category = "Food"
-    elif any(x in text for x in ["shop", "കട", "സാധനം"]): category = "Shop"
-    elif any(x in text for x in ["fish", "മീൻ"]): category = "Fish"
-    elif any(x in text for x in ["travel", "യാത്ര", "ബസ്", "പെട്രോൾ"]): category = "Travel"
+    if any(x in text for x in ["food", "ഭക്ഷണം", "ഹോട്ടൽ", "ചായ", "tea", "coffee", "ബിരിയാണി"]): category = "Food"
+    elif any(x in text for x in ["shop", "കട", "സാധനം", "ഷോപ്പിംഗ്", "ബസാർ"]): category = "Shop"
+    elif any(x in text for x in ["fish", "മീൻ", "മത്തി"]): category = "Fish"
+    elif any(x in text for x in ["travel", "യാത്ര", "ബസ്", "പെട്രോൾ", "diesel", "auto"]): category = "Travel"
     elif any(x in text for x in ["chicken", "ചിക്കൻ", "കോഴി"]): category = "Chicken"
     elif any(x in text for x in ["rent", "വാടക"]): category = "Rent"
-    elif any(x in text for x in ["trading", "ട്രേഡിംഗ്"]): category = "Trading"
+    elif any(x in text for x in ["trading", "ട്രേഡിംഗ്", "profit", "loss"]): category = "Trading"
     
     return category, amount
 
 def create_pdf(df):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(190, 10, txt="PAICHI FINANCE REPORT", ln=True, align='C')
-    pdf.ln(10)
-    pdf.set_font("Arial", 'B', 10)
-    cols = df.columns.tolist()
-    for col in cols: pdf.cell(38, 10, txt=str(col), border=1)
-    pdf.ln()
-    pdf.set_font("Arial", size=9)
-    for i, row in df.iterrows():
-        for col in cols:
-            val = str(row[col]).encode('ascii', 'ignore').decode('ascii')
-            pdf.cell(38, 10, txt=val, border=1)
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", 'B', 16)
+        pdf.cell(190, 10, txt="PAICHI FINANCE REPORT", ln=True, align='C')
+        pdf.ln(10)
+        pdf.set_font("Arial", 'B', 10)
+        cols = df.columns.tolist()
+        for col in cols: pdf.cell(38, 10, txt=str(col), border=1)
         pdf.ln()
-    return pdf.output(dest='S').encode('latin-1')
+        pdf.set_font("Arial", size=9)
+        for i, row in df.iterrows():
+            for col in cols:
+                val = str(row[col]).encode('ascii', 'ignore').decode('ascii')
+                pdf.cell(38, 10, txt=val, border=1)
+            pdf.ln()
+        return pdf.output(dest='S').encode('latin-1')
+    except: return None
 
 def get_triple_advisor():
     try:
@@ -142,7 +134,6 @@ else:
         st.session_state.auth = False
         st.rerun()
 
-    # --- PAGES ---
     if page == "📊 Advisor" and curr_user != "shabana":
         st.title("🚀 Smart Trading Terminal")
         markets = get_triple_advisor()
@@ -171,30 +162,17 @@ else:
 
     elif page == "💰 Add Entry":
         st.title("Smart Voice Entry 🎙️")
-        
-        # ബാലൻസ് ഡിസ്‌പ്ലേ
-        try:
-            df_bal = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
-            df_bal.columns = df_bal.columns.str.strip()
-            total_in = pd.to_numeric(df_bal['Credit'], errors='coerce').fillna(0).sum()
-            total_out = pd.to_numeric(df_bal['Debit'], errors='coerce').fillna(0).sum()
-            st.write(f"Current Balance: ₹{total_in - total_out:,.2f}")
-        except: pass
-
-        # സ്മാർട്ട് വോയ്‌സ് ഇൻപുട്ട്
-        v_text = speech_to_text(language='ml', key='smart_voice')
+        v_text = speech_to_text(language='ml', key='smart_voice_v2')
         v_cat, v_amt = process_voice(v_text)
         
-        if v_text: st.info(f"Detected: {v_cat} | Amount: {v_amt if v_amt else 'Not found'}")
+        if v_text: st.info(f"തിരിച്ചറിഞ്ഞത്: {v_cat} | Amount: {v_amt if v_amt else '??'}")
 
         with st.form("entry_f", clear_on_submit=True):
-            it = st.text_input("Item Description", value=v_text if v_text else "")
+            it = st.text_input("Description", value=v_text if v_text else "")
             am = st.number_input("Amount", min_value=0.0, value=v_amt, placeholder="Enter Amount...")
-            
             cat_list = ["Food", "Shop", "Fish", "Travel", "Chicken", "Rent", "Trading", "Others"]
             default_idx = cat_list.index(v_cat) if v_cat in cat_list else 7
             cat = st.selectbox("Category", cat_list, index=default_idx)
-            
             ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
             
             if st.form_submit_button("SAVE DATA"):
@@ -202,7 +180,7 @@ else:
                     d, c = (am, 0) if ty == "Debit" else (0, am)
                     full_desc = f"[{curr_user.capitalize()}] {cat}: {it}"
                     requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": full_desc, "entry.1460982454": d, "entry.1221658767": c})
-                    st.success(f"{cat} saved successfully! ✅")
+                    st.success(f"✅ {cat} saved!")
                     st.rerun()
 
     elif page == "📊 Report" and curr_user != "shabana":
@@ -216,7 +194,7 @@ else:
                 report_df = df[df['Debit'] > 0].groupby('Category')['Debit'].sum().reset_index()
                 fig = px.pie(report_df, values='Debit', names='Category', hole=0.4)
                 st.plotly_chart(fig, use_container_width=True)
-        except: st.error("Report Error")
+        except: st.error("Error loading Report")
 
     elif page == "🔍 History" and curr_user != "shabana":
         st.title("Transaction History")
@@ -224,17 +202,17 @@ else:
             df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
             df.columns = df.columns.str.strip()
             pdf_bytes = create_pdf(df)
-            st.download_button(label="📥 Download PDF", data=pdf_bytes, file_name="Finance_Report.pdf", mime="application/pdf")
+            if pdf_bytes:
+                st.download_button(label="📥 Download PDF", data=pdf_bytes, file_name="Finance_Report.pdf", mime="application/pdf")
             st.dataframe(df.iloc[::-1], use_container_width=True)
         except: st.write("Loading History...")
 
     elif page == "🤝 Debt Tracker" and curr_user != "shabana":
         st.title("Debt Management")
         with st.form("debt_f"):
-            n = st.text_input("Name")
-            a = st.number_input("Amount", min_value=0.0)
+            n, a = st.text_input("Name"), st.number_input("Amount", min_value=0.0)
             t = st.selectbox("Category", ["Borrowed", "Lent"])
             if st.form_submit_button("SAVE"):
                 d, c = (0, a) if "Borrowed" in t else (a, 0)
                 requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": f"[{curr_user.capitalize()}] DEBT: {t} - {n}", "entry.1460982454": d, "entry.1221658767": c})
-                st.success("Noted!")
+                st.success("Saved!")
