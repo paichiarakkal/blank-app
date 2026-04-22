@@ -47,25 +47,28 @@ if 'user' not in st.session_state: st.session_state.user = ""
 # --- 3. 📊 SMART ENGINES ---
 
 def process_voice(text):
-    """വോയ്‌സിൽ നിന്ന് വിവരങ്ങൾ വേർതിരിക്കുന്നു (Updated with more keywords)"""
-    if not text: return "Others", None
-    text = text.lower()
+    """വോയ്‌സിൽ നിന്ന് നമ്പറുകൾ മാറ്റി ക്ലീൻ ഡിസ്ക്രിപ്ഷൻ ഉണ്ടാക്കുന്നു"""
+    if not text: return "Others", None, ""
+    raw_text = text.lower()
     
     # എമൗണ്ട് കണ്ടെത്തുന്നു
-    nums = re.findall(r'\d+', text)
+    nums = re.findall(r'\d+', raw_text)
     amount = float(nums[0]) if nums else None
+    
+    # ഡിസ്ക്രിപ്ഷനിൽ നിന്ന് നമ്പറുകൾ മാറ്റുന്നു (ഉദാ: "dress 150" -> "dress")
+    clean_desc = re.sub(r'\d+', '', raw_text).strip()
     
     # കാറ്റഗറി മാപ്പിംഗ്
     category = "Others"
-    if any(x in text for x in ["food", "ഭക്ഷണം", "ഹോട്ടൽ", "ചായ", "tea", "coffee", "ബിരിയാണി"]): category = "Food"
-    elif any(x in text for x in ["shop", "കട", "സാധനം", "ഷോപ്പിംഗ്", "ബസാർ"]): category = "Shop"
-    elif any(x in text for x in ["fish", "മീൻ", "മത്തി"]): category = "Fish"
-    elif any(x in text for x in ["travel", "യാത്ര", "ബസ്", "പെട്രോൾ", "diesel", "auto"]): category = "Travel"
-    elif any(x in text for x in ["chicken", "ചിക്കൻ", "കോഴി"]): category = "Chicken"
-    elif any(x in text for x in ["rent", "വാടക"]): category = "Rent"
-    elif any(x in text for x in ["trading", "ട്രേഡിംഗ്", "profit", "loss"]): category = "Trading"
+    if any(x in raw_text for x in ["food", "ഭക്ഷണം", "ഹോട്ടൽ", "ചായ", "tea", "coffee", "ബിരിയാണി"]): category = "Food"
+    elif any(x in raw_text for x in ["shop", "കട", "സാധനം", "ഷോപ്പിംഗ്", "ബസാർ", "dress", "ഡ്രസ്സ്"]): category = "Shop"
+    elif any(x in raw_text for x in ["fish", "മീൻ", "മത്തി"]): category = "Fish"
+    elif any(x in raw_text for x in ["travel", "യാത്ര", "ബസ്", "പെട്രോൾ", "diesel", "auto"]): category = "Travel"
+    elif any(x in raw_text for x in ["chicken", "ചിക്കൻ", "കോഴി"]): category = "Chicken"
+    elif any(x in raw_text for x in ["rent", "വാടക"]): category = "Rent"
+    elif any(x in raw_text for x in ["trading", "ട്രേഡിംഗ്", "profit", "loss"]): category = "Trading"
     
-    return category, amount
+    return category, amount, clean_desc
 
 def create_pdf(df):
     try:
@@ -162,13 +165,14 @@ else:
 
     elif page == "💰 Add Entry":
         st.title("Smart Voice Entry 🎙️")
-        v_text = speech_to_text(language='ml', key='smart_voice_v2')
-        v_cat, v_amt = process_voice(v_text)
+        v_raw = speech_to_text(language='ml', key='smart_voice_v3')
+        v_cat, v_amt, v_desc = process_voice(v_raw)
         
-        if v_text: st.info(f"തിരിച്ചറിഞ്ഞത്: {v_cat} | Amount: {v_amt if v_amt else '??'}")
+        if v_raw: st.info(f"തിരിച്ചറിഞ്ഞത്: {v_cat} | Amount: {v_amt}")
 
         with st.form("entry_f", clear_on_submit=True):
-            it = st.text_input("Description", value=v_text if v_text else "")
+            # ഇവിടെ വോയ്‌സിൽ നിന്ന് നമ്പർ മാറ്റിയ ക്ലീൻ ടെക്സ്റ്റ് വരുന്നു
+            it = st.text_input("Description", value=v_desc if v_desc else "")
             am = st.number_input("Amount", min_value=0.0, value=v_amt, placeholder="Enter Amount...")
             cat_list = ["Food", "Shop", "Fish", "Travel", "Chicken", "Rent", "Trading", "Others"]
             default_idx = cat_list.index(v_cat) if v_cat in cat_list else 7
