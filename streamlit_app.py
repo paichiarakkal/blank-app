@@ -74,7 +74,7 @@ def process_voice(text):
     elif any(x in raw_text for x in ["travel", "യാത്ര", "ബസ്", "പെട്രോൾ", "diesel", "auto"]): category = "Travel"
     elif any(x in raw_text for x in ["chicken", "ചിക്കൻ", "കോഴി"]): category = "Chicken"
     elif any(x in raw_text for x in ["rent", "വാടക"]): category = "Rent"
-    elif any(x in raw_text for x in ["trading", "ട്രേഡിംഗ്", "profit", "loss"]): category = "Trading"
+    elif any(x in raw_text for x in ["shabana", "ട്രേഡിംഗ്", "profit", "loss"]): category = "Trading"
     
     return category, amount, clean_desc
 
