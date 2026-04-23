@@ -13,12 +13,11 @@ from streamlit_autorefresh import st_autorefresh
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRccfZch3jSdHqrScpqsR_j3FSd70NbELC1j6_nPi-MQXdrhVr3BPcKoI1nub4mQql727pQRPWYk9C-/pub?gid=1583146028&single=true&output=csv"
 FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh77RnJKWc2-uqAM0TPNG3Q5A/formResponse"
 
-# 🟢 നിന്റെ ഒരു വാട്സാപ്പ് നമ്പർ മാത്രം ഇവിടെ നൽകുക
+# 🟢 നിന്റെ വാട്സാപ്പ് നമ്പർ
 MY_PHONE = "919061611013" 
-
 USERS = {"faisal": "faisal147", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI GOLD v5.1", layout="wide")
+st.set_page_config(page_title="PAICHI GOLD v5.3", layout="wide")
 st_autorefresh(interval=60000, key="auto_refresh")
 
 # --- 2. 🎨 PREMIUM DESIGN ---
@@ -28,8 +27,9 @@ st.markdown("""
     [data-testid="stSidebar"] { background: rgba(0,0,0,0.85) !important; }
     .stButton>button { background-color: #FFD700; color: #000; border-radius: 10px; font-weight: bold; width: 100%; }
     .balance-banner { background: rgba(255, 215, 0, 0.1); padding: 15px; border-radius: 15px; border-left: 5px solid #FFD700; margin-bottom: 25px; text-align: center; }
+    .purple-box { background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 25px; border: 2px solid rgba(255, 215, 0, 0.3); text-align: center; margin-bottom: 20px; }
     h1, h2, h3, p, label { color: white !important; font-weight: bold !important; }
-    .stDataFrame { background: white; border-radius: 10px; }
+    .stDataFrame { background: white; border-radius: 10px; color: black; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -51,13 +51,30 @@ def process_voice(text):
     raw_text = text.lower().replace('.', '').replace(',', '')
     nums = re.findall(r'\d+', raw_text)
     amount = float(nums[0]) if nums else 0.0
-    # "ചായ 10" -> "ചായ" എന്ന് മാറ്റുന്നു
     clean_desc = re.sub(r'\d+', '', raw_text).strip()
     category = "Others"
     if any(x in raw_text for x in ["food", "ഭക്ഷണം", "ചായ", "hotel"]): category = "Food"
-    elif any(x in raw_text for x in ["shop", "കട", "സാധനം", "dress"]): category = "Shop"
-    elif any(x in raw_text for x in ["travel", "യാത്ര", "bus", "petrol"]): category = "Travel"
+    elif any(x in raw_text for x in ["shop", "കട", "സാധനം"]): category = "Shop"
+    elif any(x in raw_text for x in ["travel", "യാത്ര", "bus"]): category = "Travel"
     return category, amount, clean_desc
+
+def get_triple_advisor():
+    try:
+        symbols = {"Nifty 50": "^NSEI", "Bank Nifty": "^NSEBANK", "Crude Fut": "CL=F"}
+        results = []
+        for name, sym in symbols.items():
+            ticker = yf.Ticker(sym)
+            df = ticker.history(period="2d", interval="1m")
+            if df.empty: continue
+            last_p = df['Close'].iloc[-1]
+            if name == "Crude Fut": last_p *= 83.5 * 1.15
+            h, l, c = df['High'].iloc[-2], df['Low'].iloc[-2], df['Close'].iloc[-2]
+            pivot = (h + l + c) / 3
+            if last_p > pivot: sig, col = "🚀 BUY", "#00FF00"
+            else: sig, col = "📉 SELL", "#FF3131"
+            results.append({"name": name, "price": last_p, "signal": sig, "color": col})
+        return results
+    except: return None
 
 # --- 4. APP MAIN ---
 if not st.session_state.auth:
@@ -72,12 +89,14 @@ if not st.session_state.auth:
 else:
     curr_user = st.session_state.user
     
-    # ബാലൻസ് ഫൈസലിന് മാത്രം (വേണമെങ്കിൽ ഷബാനയ്ക്കും കാണിക്കാം)
-    if curr_user != "shabana":
-        balance = get_total_balance()
-        st.markdown(f'<div class="balance-banner"><span style="font-size:18px;">Total Balance</span><br><span style="font-size:32px; color:#FFD700;">₹{balance:,.2f}</span></div>', unsafe_allow_html=True)
+    # ബാലൻസ് ഫൈസലിനും ഷബാനയ്ക്കും കാണാം
+    balance = get_total_balance()
+    st.markdown(f'''<div class="balance-banner">
+        <span style="font-size:18px;">Current Balance</span><br>
+        <span style="font-size:32px; color:#FFD700;">₹{balance:,.2f}</span>
+    </div>''', unsafe_allow_html=True)
 
-    # മെനു നിയന്ത്രണം
+    # മെനു കൺട്രോൾ: ഷബാനയ്ക്ക് Add Entry മാത്രം
     if curr_user == "shabana":
         menu_options = ["💰 Add Entry"]
     else:
@@ -87,36 +106,47 @@ else:
     if st.sidebar.button("Logout"):
         st.session_state.auth = False; st.rerun()
 
-    if page == "💰 Add Entry":
+    # --- PAGE LOGIC ---
+    if page == "📊 Advisor":
+        st.title("Market Advisor 🚀")
+        data = get_triple_advisor()
+        if data:
+            for m in data:
+                st.markdown(f'''<div class="purple-box" style="border-left: 10px solid {m['color']};">
+                    <h3 style="margin:0;">{m['name']}</h3>
+                    <h1 style="color:{m['color']}; margin:10px 0;">{m['signal']}</h1>
+                    <h2 style="margin:0;">₹{m['price']:,.2f}</h2>
+                </div>''', unsafe_allow_html=True)
+
+    elif page == "💰 Add Entry":
         st.title("Smart Voice Entry 🎙️")
-        v_raw = speech_to_text(language='ml', key='voice_v5_1')
+        v_raw = speech_to_text(language='ml', key='voice_v5_3')
         v_cat, v_amt, v_desc = process_voice(v_raw)
-        
-        with st.form("entry_form_v5_1", clear_on_submit=True):
+        with st.form("entry_form_v5_3", clear_on_submit=True):
             it = st.text_input("Description", value=v_desc if v_desc else "")
             am = st.number_input("Amount", min_value=0.0, value=v_amt)
             cat_list = ["Food", "Shop", "Fish", "Travel", "Chicken", "Rent", "Others"]
             cat = st.selectbox("Category", cat_list, index=cat_list.index(v_cat) if v_cat in cat_list else 6)
             ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
-            
             if st.form_submit_button("SAVE & NOTIFY"):
                 if it and am > 0:
                     d, c = (am, 0) if ty == "Debit" else (0, am)
-                    full_desc = f"[{curr_user.capitalize()}] {cat}: {it}"
-                    requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": full_desc, "entry.1460982454": d, "entry.1221658767": c})
-                    
-                    # വാട്സാപ്പ് മെസ്സേജ് റെഡിയാക്കുന്നു
-                    msg = f"✅ *Paichi Entry Saved!*\n\n📝 Item: {it}\n💰 Amount: ₹{am}\n👤 User: {curr_user}\n📂 Cat: {cat}\n📊 Type: {ty}"
+                    requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": f"[{curr_user.capitalize()}] {cat}: {it}", "entry.1460982454": d, "entry.1221658767": c})
+                    msg = f"✅ *Paichi Entry Saved!*\n📝 Item: {it}\n💰 Amount: ₹{am}\n👤 User: {curr_user}"
                     wa_url = f"https://wa.me/{MY_PHONE}?text={urllib.parse.quote(msg)}"
-                    
-                    st.success("Saved! Click below to send WhatsApp notification.")
+                    st.success("Saved! ✅")
                     st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">🚀 SEND WHATSAPP</button></a>', unsafe_allow_html=True)
 
-    elif page == "🔍 History" and curr_user != "shabana":
-        st.title("History")
-        try:
-            df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
-            st.dataframe(df.iloc[::-1], use_container_width=True)
-        except: st.error("Data loading error!")
+    elif page == "🔍 History":
+        st.title("History 🔍")
+        df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
+        st.dataframe(df.iloc[::-1], use_container_width=True)
 
-    # മറ്റ് പേജുകൾ (Advisor, Report etc.) ഇവിടെ ചേർക്കാം...
+    elif page == "📊 Report":
+        st.title("Financial Report 📊")
+        df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
+        st.dataframe(df)
+
+    elif page == "🤝 Debt Tracker":
+        st.title("Debt Tracker 🤝")
+        st.write("Track debts here.")
