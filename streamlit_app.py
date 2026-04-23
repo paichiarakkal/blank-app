@@ -17,18 +17,19 @@ USERS = {"faisal": "faisal147", "shabana": "shabana123", "admin": "paichi786"}
 st.set_page_config(page_title="PAICHI PURPLE GOLD v4.3", layout="wide")
 st_autorefresh(interval=60000, key="auto_refresh")
 
-# --- 2. 🤖 WHATSAPP NOTIFY (Item & Amount Only) ---
-def send_wa_notify(item, amount):
+# --- 2. 🤖 WHATSAPP NOTIFY (Item, Amount & Total Balance) ---
+def send_wa_notify(item, amount, balance):
     api_key = "7463030" 
     phone = "971551347989"
-    msg = f"📝 Item: {item}\n💰 Amount: {amount}"
+    # ഐറ്റം, എമൗണ്ട്, കയ്യിലുള്ള ബാലൻസ് എന്നിവ മെസ്സേജിൽ
+    msg = f"📝 *Item:* {item}\n💰 *Amount:* {amount}\n\n💳 *Total Balance:* ₹{balance:,.2f}"
     url = f"https://api.callmebot.com/whatsapp.php?phone={phone}&text={requests.utils.quote(msg)}&apikey={api_key}"
     try:
         requests.get(url)
     except:
         pass
 
-# --- 3. 🎨 PREMIUM DESIGN (Your Original Color & Style) ---
+# --- 3. 🎨 PREMIUM DESIGN (Original Style) ---
 st.markdown("""
     <style>
     .stApp { background: linear-gradient(135deg, #2D0844, #4B0082, #1A0521); color: #fff; }
@@ -47,6 +48,7 @@ if 'user' not in st.session_state: st.session_state.user = ""
 # --- 4. DATA ENGINES ---
 def get_total_balance():
     try:
+        # ഗൂഗിൾ ഷീറ്റിൽ നിന്ന് ഡാറ്റ എടുക്കുന്നു
         df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
         df.columns = df.columns.str.strip()
         total_in = pd.to_numeric(df['Credit'], errors='coerce').fillna(0).sum()
@@ -71,7 +73,7 @@ def get_triple_advisor():
         return results
     except: return None
 
-# --- 5. MAIN APP LOGIC ---
+# --- 5. MAIN LOGIC ---
 if not st.session_state.auth:
     st.title("🔐 PAICHI FINANCE LOGIN")
     u = st.text_input("Username").lower()
@@ -84,7 +86,7 @@ if not st.session_state.auth:
 else:
     curr_user = st.session_state.user
     
-    # --- NAVIGATION (Shabana Limitation) ---
+    # NAVIGATION
     if curr_user == "shabana":
         page = "💰 Add Entry"
     else:
@@ -116,15 +118,18 @@ else:
             ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
             if st.form_submit_button("SAVE DATA"):
                 if it and am > 0:
-                    # 1. Save to Sheet
+                    # 1. ഗൂഗിൾ ഫോമിലേക്ക് അയക്കുന്നു
                     d, c = (am, 0) if ty == "Debit" else (0, am)
                     full_desc = f"[{curr_user.capitalize()}] {cat}: {it}"
                     requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": full_desc, "entry.1460982454": d, "entry.1221658767": c})
                     
-                    # 2. WhatsApp Notify
-                    send_wa_notify(it, am)
+                    # 2. ടോട്ടൽ ബാലൻസ് നോക്കുന്നു
+                    new_balance = get_total_balance()
                     
-                    st.success("Saved! ✅")
+                    # 3. വാട്സാപ്പിൽ അയക്കുന്നു
+                    send_wa_notify(it, am, new_balance)
+                    
+                    st.success(f"Saved! Current Balance: ₹{new_balance:,.2f} ✅")
                     st.rerun()
 
     elif page == "🔍 History":
@@ -132,7 +137,7 @@ else:
         try:
             df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
             st.dataframe(df.iloc[::-1], use_container_width=True)
-        except: st.error("Data error")
+        except: st.error("Data loading error.")
 
     elif page == "📊 Report":
         st.title("Expense Analysis")
@@ -143,4 +148,4 @@ else:
             report_df = df[df['Debit'] > 0].groupby('Item')['Debit'].sum().reset_index()
             fig = px.pie(report_df, values='Debit', names='Item', hole=0.4)
             st.plotly_chart(fig, use_container_width=True)
-        except: st.write("No report data.")
+        except: st.write("Data missing.")
