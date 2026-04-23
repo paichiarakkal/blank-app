@@ -7,9 +7,6 @@ import random
 import plotly.express as px
 from streamlit_mic_recorder import speech_to_text
 from streamlit_autorefresh import st_autorefresh
-from fpdf import FPDF
-import io
-import re
 
 # --- 1. CONFIG & SETTINGS ---
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRccfZch3jSdHqrScpqsR_j3FSd70NbELC1j6_nPi-MQXdrhVr3BPcKoI1nub4mQql727pQRPWYk9C-/pub?gid=1583146028&single=true&output=csv"
@@ -20,7 +17,7 @@ USERS = {"faisal": "faisal147", "shabana": "shabana123", "admin": "paichi786"}
 st.set_page_config(page_title="PAICHI PURPLE GOLD v4.3", layout="wide")
 st_autorefresh(interval=60000, key="auto_refresh")
 
-# --- 2. 🤖 WHATSAPP ENGINE ---
+# --- 2. 🤖 WHATSAPP NOTIFY (Item & Amount Only) ---
 def send_wa_notify(item, amount):
     api_key = "7463030" 
     phone = "971551347989"
@@ -31,7 +28,7 @@ def send_wa_notify(item, amount):
     except:
         pass
 
-# --- 3. 🎨 PREMIUM DESIGN ---
+# --- 3. 🎨 PREMIUM DESIGN (Your Original Color & Style) ---
 st.markdown("""
     <style>
     .stApp { background: linear-gradient(135deg, #2D0844, #4B0082, #1A0521); color: #fff; }
@@ -46,7 +43,6 @@ st.markdown("""
 
 if 'auth' not in st.session_state: st.session_state.auth = False
 if 'user' not in st.session_state: st.session_state.user = ""
-if 'page_selection' not in st.session_state: st.session_state.page_selection = "🏠 Dashboard"
 
 # --- 4. DATA ENGINES ---
 def get_total_balance():
@@ -75,7 +71,7 @@ def get_triple_advisor():
         return results
     except: return None
 
-# --- 5. MAIN LOGIC ---
+# --- 5. MAIN APP LOGIC ---
 if not st.session_state.auth:
     st.title("🔐 PAICHI FINANCE LOGIN")
     u = st.text_input("Username").lower()
@@ -88,13 +84,11 @@ if not st.session_state.auth:
 else:
     curr_user = st.session_state.user
     
-    # NAVIGATION
+    # --- NAVIGATION (Shabana Limitation) ---
     if curr_user == "shabana":
         page = "💰 Add Entry"
     else:
-        menu_options = ["📊 Advisor", "🏠 Dashboard", "💰 Add Entry", "📊 Report", "🔍 History"]
-        page = st.sidebar.radio("Menu", menu_options, index=menu_options.index(st.session_state.page_selection))
-        st.session_state.page_selection = page
+        page = st.sidebar.radio("Menu", ["📊 Advisor", "🏠 Dashboard", "💰 Add Entry", "📊 Report", "🔍 History"])
 
     if st.sidebar.button("Logout"):
         st.session_state.auth = False; st.rerun()
@@ -122,14 +116,16 @@ else:
             ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
             if st.form_submit_button("SAVE DATA"):
                 if it and am > 0:
+                    # 1. Save to Sheet
                     d, c = (am, 0) if ty == "Debit" else (0, am)
                     full_desc = f"[{curr_user.capitalize()}] {cat}: {it}"
                     requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": full_desc, "entry.1460982454": d, "entry.1221658767": c})
+                    
+                    # 2. WhatsApp Notify
                     send_wa_notify(it, am)
+                    
                     st.success("Saved! ✅")
-                    if curr_user != "shabana":
-                        st.session_state.page_selection = "🔍 History"
-                        st.rerun()
+                    st.rerun()
 
     elif page == "🔍 History":
         st.title("Transaction History")
@@ -147,4 +143,4 @@ else:
             report_df = df[df['Debit'] > 0].groupby('Item')['Debit'].sum().reset_index()
             fig = px.pie(report_df, values='Debit', names='Item', hole=0.4)
             st.plotly_chart(fig, use_container_width=True)
-        except: st.write("No report data available.")
+        except: st.write("No report data.")
