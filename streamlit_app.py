@@ -136,7 +136,7 @@ else:
         <span style="font-size:32px; color:#FFD700;">₹{balance:,.2f}</span>
     </div>""", unsafe_allow_html=True)
 
-    if curr_user == "shabana": page = ["💰 Add Entry","🏠 Dashboard"]
+    if curr_user == "shabana": page = "💰 Add Entry",
     else: page = st.sidebar.radio("Menu", ["📊 Advisor", "🏠 Dashboard", "💰 Add Entry", "📊 Report", "🔍 History", "🤝 Debt Tracker"])
 
     if st.sidebar.button("Logout"):
