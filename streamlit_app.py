@@ -16,12 +16,12 @@ import urllib.parse
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRccfZch3jSdHqrScpqsR_j3FSd70NbELC1j6_nPi-MQXdrhVr3BPcKoI1nub4mQql727pQRPWYk9C-/pub?gid=1583146028&single=true&output=csv"
 FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh77RnJKWc2-uqAM0TPNG3Q5A/formResponse"
 
-# 🟢 നിന്റെ വാട്സാപ്പ് നമ്പർ ഇവിടെ നൽകിയിരിക്കുന്നു
+# നിന്റെ വാട്സാപ്പ് നമ്പർ
 MY_PHONE = "918714752210"
 
 USERS = {"faisal": "faisal147", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI PURPLE GOLD v5.4", layout="wide")
+st.set_page_config(page_title="PAICHI PURPLE GOLD v5.5", layout="wide")
 st_autorefresh(interval=60000, key="auto_refresh")
 
 # --- 2. 🎨 PREMIUM DESIGN ---
@@ -34,6 +34,8 @@ st.markdown("""
     .purple-box { background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 25px; border: 2px solid rgba(255, 215, 0, 0.3); text-align: center; margin-bottom: 20px; }
     h1, h2, h3, p, label { color: white !important; font-weight: bold !important; }
     .stDataFrame { background: white; border-radius: 10px; color: black; }
+    /* ആ ചെറിയ ബോക്സ് വരാതിരിക്കാൻ */
+    div.stSuccess { background-color: rgba(0, 255, 0, 0.1) !important; color: white !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -41,7 +43,6 @@ if 'auth' not in st.session_state: st.session_state.auth = False
 if 'user' not in st.session_state: st.session_state.user = ""
 
 # --- 3. 📊 SMART ENGINES ---
-
 def get_total_balance():
     try:
         df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
@@ -92,6 +93,8 @@ if not st.session_state.auth:
         else: st.error("Access Denied!")
 else:
     curr_user = st.session_state.user
+    
+    # ബാലൻസ് ഇപ്പോൾ ഷബാനയ്ക്കും കാണാം
     balance = get_total_balance()
     st.markdown(f'''<div class="balance-banner">
         <span style="font-size:18px;">Available Balance</span><br>
@@ -105,7 +108,38 @@ else:
         st.session_state.auth = False; st.rerun()
 
     # --- PAGES ---
-    if page == "📊 Advisor":
+    if page == "💰 Add Entry":
+        st.title("Smart Voice Entry 🎙️")
+        v_raw = speech_to_text(language='ml', key='voice_v5_5')
+        v_cat, v_amt, v_desc = process_voice(v_raw)
+        
+        with st.form("entry_form", clear_on_submit=True):
+            it = st.text_input("Description", value=v_desc if v_desc else "")
+            am = st.number_input("Amount", min_value=0.0, value=v_amt)
+            cat_list = ["Food", "Shop", "Fish", "Travel", "Chicken", "Rent", "Others"]
+            cat = st.selectbox("Category", cat_list, index=cat_list.index(v_cat) if v_cat in cat_list else 6)
+            ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
+            
+            submit = st.form_submit_button("SAVE & NOTIFY")
+            
+            if submit:
+                if it and am > 0:
+                    d, c = (am, 0) if ty == "Debit" else (0, am)
+                    requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": f"[{curr_user.capitalize()}] {cat}: {it}", "entry.1460982454": d, "entry.1221658767": c})
+                    
+                    msg = f"✅ *Entry Saved!*\n📝 Item: {it}\n💰 Amount: ₹{am}\n👤 User: {curr_user}"
+                    wa_url = f"https://wa.me/{MY_PHONE}?text={urllib.parse.quote(msg)}"
+                    
+                    st.success("Saved! ✅")
+                    st.markdown(f'''<a href="{wa_url}" target="_blank">
+                        <button style="width:100%; background:#25D366; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">
+                        🚀 SEND WHATSAPP
+                        </button></a>''', unsafe_allow_html=True)
+                    # കുറച്ച് സമയം കഴിഞ്ഞ് പേജ് റിഫ്രഷ് ആകും, അപ്പോൾ ആ ചെറിയ ബോക്സ് പോകും
+                else:
+                    st.error("Please enter item and amount!")
+
+    elif page == "📊 Advisor":
         st.title("🚀 Smart Trading Advisor")
         data = get_triple_advisor()
         if data:
@@ -116,29 +150,9 @@ else:
                     <h2 style="margin:0;">₹{m['price']:,.2f}</h2>
                 </div>''', unsafe_allow_html=True)
 
-    elif page == "💰 Add Entry":
-        st.title("Smart Voice Entry 🎙️")
-        v_raw = speech_to_text(language='ml', key='voice_v5_4')
-        v_cat, v_amt, v_desc = process_voice(v_raw)
-        with st.form("entry_form", clear_on_submit=True):
-            it = st.text_input("Description", value=v_desc if v_desc else "")
-            am = st.number_input("Amount", min_value=0.0, value=v_amt)
-            cat_list = ["Food", "Shop", "Fish", "Travel", "Chicken", "Rent", "Others"]
-            cat = st.selectbox("Category", cat_list, index=cat_list.index(v_cat) if v_cat in cat_list else 6)
-            ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
-            if st.form_submit_button("SAVE & NOTIFY"):
-                if it and am > 0:
-                    d, c = (am, 0) if ty == "Debit" else (0, am)
-                    requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": f"[{curr_user.capitalize()}] {cat}: {it}", "entry.1460982454": d, "entry.1221658767": c})
-                    
-                    msg = f"✅ *Entry Saved!*\n📝 Item: {it}\n💰 Amount: ₹{am}\n👤 User: {curr_user}"
-                    wa_url = f"https://wa.me/{MY_PHONE}?text={urllib.parse.quote(msg)}"
-                    st.success("Saved! ✅")
-                    st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background:#25D366; color:white; border:none; padding:12px; border-radius:10px; font-weight:bold;">🚀 SEND WHATSAPP</button></a>', unsafe_allow_html=True)
-
     elif page == "🔍 History" and curr_user != "shabana":
         st.title("Transaction History")
         df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
         st.dataframe(df.iloc[::-1], use_container_width=True)
 
-    # ബാക്കി റിപ്പോർട്ടും ഡാഷ്ബോർഡും ഫൈസലിന് മാത്രം കാണാം
+    # ബാക്കി ഡാഷ്ബോർഡ്, റിപ്പോർട്ട് തുടങ്ങിയവ ഇവിടെ വരും...
