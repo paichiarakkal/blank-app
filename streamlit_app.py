@@ -22,13 +22,12 @@ st_autorefresh(interval=60000, key="auto_refresh")
 
 # --- 2. 🤖 WHATSAPP NOTIFICATION ENGINE ---
 def send_wa_notify(item, amount, category, entry_type):
-    # നിങ്ങൾ നൽകിയ പുതിയ API വിവരങ്ങൾ
     api_key = "7463030" 
     phone = "971551347989"
     
-    # മെസ്സേജ് ഫോർമാറ്റ്
     msg = f"💳 *PAICHI EXPENSE ALERT* 💳\n\n📝 *Item:* {item}\n💰 *Amount:* AED {amount}\n📂 *Category:* {category}\n📊 *Type:* {entry_type}\n⏰ *Time:* {datetime.now().strftime('%I:%M %p')}"
     
+    # URL encoding for spaces and special characters
     url = f"https://api.callmebot.com/whatsapp.php?phone={phone}&text={requests.utils.quote(msg)}&apikey={api_key}"
     try:
         requests.get(url)
@@ -52,7 +51,34 @@ if 'auth' not in st.session_state: st.session_state.auth = False
 if 'user' not in st.session_state: st.session_state.user = ""
 if 'page_selection' not in st.session_state: st.session_state.page_selection = "🏠 Dashboard"
 
-# --- 4. APP LOGIC ---
+# --- 4. DATA ENGINES ---
+def get_total_balance():
+    try:
+        df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
+        df.columns = df.columns.str.strip()
+        total_in = pd.to_numeric(df['Credit'], errors='coerce').fillna(0).sum()
+        total_out = pd.to_numeric(df['Debit'], errors='coerce').fillna(0).sum()
+        return total_in - total_out
+    except: return 0.0
+
+def get_triple_advisor():
+    try:
+        symbols = {"Nifty 50": "^NSEI", "Bank Nifty": "^NSEBANK", "Crude Fut": "CL=F"}
+        results = []
+        for name, sym in symbols.items():
+            df = yf.Ticker(sym).history(period="1d", interval="5m")
+            if df.empty: continue
+            last_p = df['Close'].iloc[-1]
+            h, l, c = df['High'].iloc[-2], df['Low'].iloc[-2], df['Close'].iloc[-2]
+            pivot = (h + l + c) / 3
+            if last_p > pivot: signal, color = "🚀 BUY", "#00FF00"
+            else: signal, color = "📉 SELL", "#FF3131"
+            if name == "Crude Fut": last_p = last_p * 83.5 * 1.15
+            results.append({"name": name, "price": last_p, "signal": signal, "color": color})
+        return results
+    except: return None
+
+# --- 5. APP MAIN LOGIC ---
 if not st.session_state.auth:
     st.title("🔐 PAICHI FINANCE LOGIN")
     u = st.text_input("Username").lower()
@@ -78,41 +104,43 @@ else:
         st.session_state.auth = False; st.rerun()
 
     # --- PAGES ---
-    if page == "💰 Add Entry":
-        st.title("Smart Entry & WhatsApp Notify 🎙️")
+    if page == "📊 Advisor":
+        st.title("🚀 Trading Advisor")
+        markets = get_triple_advisor()
+        if markets:
+            for m in markets:
+                st.markdown(f'<div class="purple-box" style="border-color:{m["color"]};"><h2>{m["name"]}</h2><h1 style="color:{m["color"]};">{m["signal"]}</h1><h3>₹{m["price"]:,.2f}</h3></div>', unsafe_allow_html=True)
+
+    elif page == "🏠 Dashboard":
+        balance = get_total_balance()
+        st.markdown(f'<div class="balance-banner"><h1>Available Balance</h1><h1 style="color:#FFD700;">₹{balance:,.2f}</h1></div>', unsafe_allow_html=True)
+        st.info("Check 'History' for detailed records.")
+
+    elif page == "💰 Add Entry":
+        st.title("Add New Entry 🎙️")
         v_raw = speech_to_text(language='ml', key='v_v1')
-        
         with st.form("entry_form", clear_on_submit=True):
             it = st.text_input("Description", value=v_raw if v_raw else "")
             am = st.number_input("Amount", min_value=0.0)
             cat = st.selectbox("Category", ["Food", "Shop", "Travel", "Chicken", "Rent", "Others"])
             ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
-            
-            if st.form_submit_button("SAVE DATA"):
+            if st.form_submit_button("SAVE & NOTIFY"):
                 if it and am > 0:
-                    # 1. Save to Google Form
                     d, c = (am, 0) if ty == "Debit" else (0, am)
                     full_desc = f"[{curr_user.capitalize()}] {cat}: {it}"
                     requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": full_desc, "entry.1460982454": d, "entry.1221658767": c})
-                    
-                    # 2. Send WhatsApp Message
                     send_wa_notify(it, am, cat, ty)
-                    
-                    st.success("Saved & Notified! ✅")
+                    st.success("Saved! ✅")
                     st.session_state.page_selection = "🔍 History"
                     st.rerun()
-
-    elif page == "🏠 Dashboard":
-        st.title("Financial Overview")
-        # (Dashboard Logic Here...)
-        st.write("Dashboard content loading...")
 
     elif page == "🔍 History":
         st.title("Transaction History")
         try:
             df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
             st.dataframe(df.iloc[::-1], use_container_width=True)
-        except:
-            st.write("No history found.")
+        except: st.error("Data connection error.")
 
-    # (Add other pages like Advisor/Report from previous code if needed)
+    elif page == "📊 Report":
+        st.title("Expense Analysis")
+        st.write("Charts loading...")
