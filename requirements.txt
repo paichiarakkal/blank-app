@@ -3,6 +3,7 @@ yfinance
 requests
 streamlit
 streamlit-autorefresh
-streamlit-mic_recorder
+streamlit-mic-recorder
 plotly
 fpdf
+lxml
