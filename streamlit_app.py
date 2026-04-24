@@ -17,7 +17,7 @@ import threading
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRccfZch3jSdHqrScpqsR_j3FSd70NbELC1j6_nPi-MQXdrhVr3BPcKoI1nub4mQql727pQRPWYk9C-/pub?gid=1583146028&single=true&output=csv"
 FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh77RnJKWc2-uqAM0TPNG3Q5A/formResponse"
 
-# വാട്സാപ്പ് സെറ്റിംഗ്സ്
+# WhatsApp Config
 WA_PHONE = "971551347989"
 WA_API_KEY = "7463030"
 
@@ -77,15 +77,12 @@ def process_voice(text):
     nums = re.findall(r'\d+', raw_text)
     amount = float(nums[0]) if nums else None
     clean_desc = re.sub(r'\d+', '', raw_text).strip()
-    
     category = "Others"
     if any(x in raw_text for x in ["food", "ഭക്ഷണം", "ഹോട്ടൽ", "ചായ", "tea"]): category = "Food"
     elif any(x in raw_text for x in ["shop", "കട", "സാധനം"]): category = "Shop"
     elif any(x in raw_text for x in ["rent", "വാടക"]): category = "Rent"
-    
     return category, amount, clean_desc
 
-# (ബാക്കി ഫംഗ്ഷനുകൾ create_pdf, get_triple_advisor എന്നിവ നിന്റെ കോഡിലുള്ളത് പോലെ തന്നെ...)
 def create_pdf(df):
     try:
         pdf = FPDF()
@@ -151,32 +148,37 @@ else:
 
     if page == "💰 Add Entry":
         st.title("Smart Voice Entry 🎙️")
-        v_raw = speech_to_text(language='ml', key='voice_v44')
+        v_raw = speech_to_text(language='ml', key='voice_v_final')
         v_cat, v_amt, v_desc = process_voice(v_raw)
 
         with st.form("entry_form", clear_on_submit=True):
             it = st.text_input("Description", value=v_desc if v_desc else "")
-            am = st.number_input("Amount", min_value=0.0, value=v_amt if v_amt else 0.0)
+            
+            # Amount ബോക്സിൽ 0.0 ഒഴിവാക്കാൻ text_input ഉപയോഗിച്ചു
+            am_str = st.text_input("Amount", value=str(v_amt) if v_amt else "")
+            
             cat_list = ["Food", "Shop", "Fish", "Travel", "Chicken", "Rent", "Others"]
             cat = st.selectbox("Category", cat_list, index=cat_list.index(v_cat) if v_cat in cat_list else 6)
             ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
             
             if st.form_submit_button("SAVE DATA"):
-                if am > 0:
-                    d, c = (am, 0) if ty == "Debit" else (0, am)
-                    new_bal = balance + (c - d)
-                    full_desc = f"[{curr_user.capitalize()}] {cat}: {it}"
-                    
-                    # ഗൂഗിൾ ഷീറ്റിൽ സേവ് ചെയ്യുന്നു
-                    requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": full_desc, "entry.1460982454": d, "entry.1221658767": c})
-                    
-                    # വാട്സാപ്പ് മെസ്സേജ് അയക്കുന്നു
-                    wa_msg = f"✅ *Paichi Entry*\n📂 {cat}\n📝 {it}\n💰 ₹{am}\n⚖️ *Bal: ₹{new_bal:,.2f}*"
-                    threading.Thread(target=send_wa, args=(wa_msg,)).start()
-                    
-                    st.success(f"Saved! Balance: ₹{new_bal:,.2f}"); st.rerun()
+                try:
+                    am = float(am_str) if am_str else 0.0
+                    if am > 0:
+                        d, c = (am, 0) if ty == "Debit" else (0, am)
+                        new_bal = balance + (c - d)
+                        full_desc = f"[{curr_user.capitalize()}] {cat}: {it}"
+                        
+                        # Google Sheets Save
+                        requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": full_desc, "entry.1460982454": d, "entry.1221658767": c})
+                        
+                        # WhatsApp Notification
+                        wa_msg = f"✅ *Paichi Entry*\n📂 {cat}\n📝 {it}\n💰 ₹{am}\n⚖️ *Bal: ₹{new_bal:,.2f}*"
+                        threading.Thread(target=send_wa, args=(wa_msg,)).start()
+                        
+                        st.success("Saved! ✅"); st.rerun()
+                except: st.error("Valid Amount നൽകുക!")
 
-    # (ബാക്കി പേജുകൾ Dashboard, Advisor, History എല്ലാം നിന്റെ ഒറിജിനൽ കോഡിലുള്ളത് പോലെ തന്നെ വരും)
     elif page == "📊 Advisor":
         st.title("🚀 Smart Trading Terminal")
         markets = get_triple_advisor()
@@ -189,8 +191,47 @@ else:
                     <p>RSI: {m["rsi"]:.1f}</p>
                 </div>""", unsafe_allow_html=True)
 
-    elif page == "🔍 History":
+    elif page == "🏠 Dashboard":
+        st.title("Financial Overview")
         try:
             df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
+            df.columns = df.columns.str.strip()
+            total_in = pd.to_numeric(df['Credit'], errors='coerce').fillna(0).sum()
+            total_out = pd.to_numeric(df['Debit'], errors='coerce').fillna(0).sum()
+            st.markdown(f"""<div class="purple-box">
+                <h3>Total Credit: ₹{total_in:,.2f}</h3>
+                <h3>Total Debit: ₹{total_out:,.2f}</h3>
+            </div>""", unsafe_allow_html=True)
+        except: st.error("Data error")
+
+    elif page == "📊 Report":
+        st.title("Expense Analysis")
+        try:
+            df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
+            df.columns = df.columns.str.strip()
+            df['Debit'] = pd.to_numeric(df['Debit'], errors='coerce').fillna(0)
+            df['Category'] = df['Item'].apply(lambda x: str(x).split(':')[0] if ':' in str(x) else 'Other')
+            report_df = df[df['Debit'] > 0].groupby('Category')['Debit'].sum().reset_index()
+            fig = px.pie(report_df, values='Debit', names='Category', hole=0.4)
+            st.plotly_chart(fig, use_container_width=True)
+        except: st.write("No data for report.")
+
+    elif page == "🔍 History":
+        st.title("Transaction History")
+        try:
+            df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
+            df.columns = df.columns.str.strip()
+            pdf_bytes = create_pdf(df)
+            if pdf_bytes: st.download_button("📥 Download PDF", pdf_bytes, "Report.pdf", "application/pdf")
             st.dataframe(df.iloc[::-1], use_container_width=True)
         except: st.write("No history.")
+
+    elif page == "🤝 Debt Tracker":
+        st.title("Debt Management")
+        with st.form("debt_form"):
+            n, a = st.text_input("Name"), st.number_input("Amount", min_value=0.0)
+            t = st.selectbox("Category", ["Borrowed", "Lent"])
+            if st.form_submit_button("SAVE"):
+                d, c = (0, a) if "Borrowed" in t else (a, 0)
+                requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": f"[{curr_user.capitalize()}] DEBT: {t} - {n}", "entry.1460982454": d, "entry.1221658767": c})
+                st.success("Debt Saved! ✅")
