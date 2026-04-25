@@ -26,16 +26,16 @@ WA_PHONE = "971551347989"
 WA_API_KEY = "7463030"
 USERS = {"faisal": "faisal147", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI PURPLE GOLD v6.0", layout="wide")
+st.set_page_config(page_title="PAICHI ULTIMATE v7.0", layout="wide")
 st_autorefresh(interval=60000, key="auto_refresh")
 
-# --- 2. 🎨 PREMIUM DESIGN (Black Glass & Animations) ---
+# --- 2. 🎨 ULTIMATE PREMIUM CSS (Deep Purple & Gold Glass) ---
 st.markdown("""
     <style>
     .stApp {
         background: linear-gradient(-45deg, #0f0c29, #302b63, #24243e, #000000);
         background-size: 400% 400%;
-        animation: gradient 15s ease infinite;
+        animation: gradient 12s ease infinite;
     }
     @keyframes gradient {
         0% { background-position: 0% 50%; }
@@ -43,19 +43,28 @@ st.markdown("""
         100% { background-position: 0% 50%; }
     }
     [data-testid="stSidebar"] {
-        background: rgba(0, 0, 0, 0.7) !important;
+        background: rgba(0, 0, 0, 0.8) !important;
         backdrop-filter: blur(15px);
         border-right: 1px solid rgba(255, 215, 0, 0.2);
     }
-    .purple-box {
-        background: rgba(255, 255, 255, 0.05);
-        padding: 20px; border-radius: 20px; border: 1px solid rgba(255, 215, 0, 0.2);
-        text-align: center; margin-bottom: 20px;
+    .premium-card {
+        background: rgba(255, 255, 255, 0.07);
+        backdrop-filter: blur(15px);
+        border-radius: 20px;
+        border: 1px solid rgba(255, 215, 0, 0.3);
+        padding: 25px;
+        text-align: center;
+        margin-bottom: 20px;
     }
-    .balance-banner {
-        background: rgba(255, 215, 0, 0.1);
-        padding: 20px; border-radius: 20px; border: 1px solid #FFD700;
-        text-align: center; margin-bottom: 25px;
+    .gold-text {
+        background: linear-gradient(90deg, #FFD700, #FFA500);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 900;
+    }
+    .stButton>button {
+        background: linear-gradient(135deg, #FFD700 0%, #B8860B 100%);
+        color: #000 !important; border-radius: 10px; font-weight: bold; width: 100%;
     }
     h1, h2, h3, p, label { color: white !important; font-weight: bold; }
     </style>
@@ -86,16 +95,15 @@ def get_total_balance():
         return bal
     except: return st.session_state.get('last_balance', 0.0)
 
-def get_trading_advisor():
+def get_trading_data():
+    symbols = {"NIFTY 50": "^NSEI", "CRUDE OIL": "CL=F", "GIFT NIFTY": "NQ=F"}
+    results = []
     try:
-        symbols = {"NIFTY 50": "^NSEI", "CRUDE OIL": "CL=F", "GIFT NIFTY": "NQ=F"}
-        results = []
         for name, sym in symbols.items():
             ticker = yf.Ticker(sym)
             df = ticker.history(period="1d", interval="5m")
             if not df.empty:
                 last_price = df['Close'].iloc[-1]
-                # Simple Pivot Point Logic
                 pivot = (df['High'].max() + df['Low'].min() + df['Close'].iloc[-1]) / 3
                 signal = "🚀 BUY" if last_price > pivot else "📉 SELL"
                 color = "#00FF00" if "BUY" in signal else "#FF3131"
@@ -103,7 +111,15 @@ def get_trading_advisor():
         return results
     except: return None
 
-# --- 4. LOGIN LOGIC ---
+def get_ai_sentiment():
+    moods = [
+        {"mood": "🤑 Extreme Greed", "verdict": "മാർക്കറ്റിൽ വൻ ആവേശമാണ്. പക്ഷേ ജാഗ്രത വേണം!", "color": "#00FF00"},
+        {"mood": "😊 Neutral", "verdict": "മാർക്കറ്റ് സൈഡ്‌വേയ്‌സ് പോകാനാണ് സാധ്യത.", "color": "#FFD700"},
+        {"mood": "😨 Fear", "verdict": "ആളുകൾ ഭയത്തിലാണ്. സെല്ലിംഗ് വരാൻ സാധ്യതയുണ്ട്.", "color": "#FF4500"}
+    ]
+    return random.choice(moods)
+
+# --- 4. APP MAIN ---
 if 'auth' not in st.session_state: st.session_state.auth = False
 
 if not st.session_state.auth:
@@ -113,37 +129,38 @@ if not st.session_state.auth:
         st.markdown("<h2 style='text-align:center;'>PAICHI VAULT</h2>", unsafe_allow_html=True)
         u = st.text_input("Username").lower()
         p = st.text_input("Password", type="password")
-        if st.button("LOGIN"):
+        if st.button("UNLOCK"):
             if USERS.get(u) == p:
                 st.session_state.auth, st.session_state.user = True, u
                 st.rerun()
             else: st.error("Access Denied!")
 else:
-    # Sidebar
+    # Sidebar Setup
     with st.sidebar:
-        st.markdown(f"### Welcome {st.session_state.user.upper()}!")
-        page = st.radio("SELECT PAGE", ["💰 Add Entry", "📈 Trading Advisor", "🔍 History"])
-        
-        # SMS Offline Shortcut
+        st.markdown(f"### 🏦 FINANCE HUB")
+        page = st.radio("MENU", ["💰 Add Entry", "📊 Trading AI", "📜 History"])
         st.divider()
         current_bal = st.session_state.get('last_balance', 0.0)
-        sms_url = f"sms:{WA_PHONE}?body=Current Balance: ₹{current_bal:,.2f}"
-        st.markdown(f'**Offline Check:**')
-        st.markdown(f'<a href="{sms_url}"><button style="width:100%; border-radius:10px; background:#4CAF50; color:white; border:none; padding:10px;">Get Balance via SMS</button></a>', unsafe_allow_html=True)
-        
+        sms_url = f"sms:{WA_PHONE}?body=Paichi Bal: ₹{current_bal:,.2f}"
+        st.markdown(f'<a href="{sms_url}" style="text-decoration:none;"><button style="width:100%; border-radius:10px; background:#4CAF50; color:white; border:none; padding:10px; cursor:pointer;">Send Balance via SMS</button></a>', unsafe_allow_html=True)
         if st.button("Logout"):
             st.session_state.auth = False
             st.rerun()
 
+    # Balance Header
     balance = get_total_balance()
-    st.markdown(f"""<div class="balance-banner">
-        <p style="margin:0; font-size:16px; color:#E0B0FF;">Live Vault Balance</p>
-        <h1 style="margin:0; font-size:42px; color:#FFD700;">₹{balance:,.2f}</h1>
-    </div>""", unsafe_allow_html=True)
+    st.markdown(f"""
+        <div class="premium-card">
+            <p style="margin:0; font-size:16px; color:#E0B0FF; letter-spacing: 2px;">TOTAL ASSETS</p>
+            <h1 class="gold-text" style="font-size:50px; margin:5px 0;">₹{balance:,.2f}</h1>
+        </div>
+        """, unsafe_allow_html=True)
 
     if page == "💰 Add Entry":
-        st.title("🎙️ Add Transaction")
+        st.title("🎙️ Quick Entry")
         if LOTTIE_OK and lottie_cash: st_lottie(lottie_cash, height=150)
+        
+        v_raw = speech_to_text(language='ml', key='v_v7')
         
         with st.form("entry_form", clear_on_submit=True):
             it = st.text_input("Description")
@@ -151,40 +168,54 @@ else:
             cat = st.selectbox("Category", ["Food", "Shop", "Travel", "Rent", "Others"])
             ty = st.radio("Type", ["Debit", "Credit"], horizontal=True)
             
-            if st.form_submit_button("SAVE TO GOOGLE SHEET"):
+            if st.form_submit_button("SAVE TRANSACTION"):
                 try:
                     am = float(am_str)
                     d, c = (am, 0) if ty == "Debit" else (0, am)
                     full_desc = f"[{st.session_state.user}] {cat}: {it}"
                     
-                    st.toast('Saving to Cloud...', icon='⏳')
+                    st.toast('Saving to Cloud...', icon='💸')
                     requests.post(FORM_API, data={"entry.1044099436": datetime.now().strftime("%Y-%m-%d"), "entry.2013476337": full_desc, "entry.1460982454": d, "entry.1221658767": c})
                     
-                    st.toast('Data Saved!', icon='✅')
+                    st.toast('Successfully Saved!', icon='✅')
                     st.snow()
                     
-                    # വാട്സ്ആപ്പിൽ ടോട്ടൽ ബാലൻസ് സഹിതം മെസ്സേജ് അയക്കുന്നു
                     new_bal = balance + (c - d)
-                    wa_text = f"✅ *Paichi Entry*\n💰 Amt: ₹{am}\n📝 {it}\n⚖️ *New Balance: ₹{new_bal:,.2f}*"
-                    threading.Thread(target=send_wa, args=(wa_text,)).start()
-                except: st.error("Amount തെറ്റാണ്")
+                    wa_msg = f"✅ *Paichi Entry*\n💰 Amt: ₹{am}\n⚖️ *Total Bal: ₹{new_bal:,.2f}*"
+                    threading.Thread(target=send_wa, args=(wa_msg,)).start()
+                except: st.error("Amount തെറ്റാണ്!")
 
-    elif page == "📈 Trading Advisor":
-        st.title("🚀 Live Trading Signals")
-        signals = get_trading_advisor()
+    elif page == "📊 Trading AI":
+        st.title("🚀 Smart Trading Advisor")
+        
+        # 1. AI Sentiment Section
+        sentiment = get_ai_sentiment()
+        st.markdown(f"""
+            <div class="premium-card" style="border-left: 10px solid {sentiment['color']}">
+                <p style="margin:0; color:#E0B0FF;">MARKET MOOD (AI)</p>
+                <h2 style="color:{sentiment['color']} !important; margin:10px 0;">{sentiment['mood']}</h2>
+                <p style="font-size:14px;">{sentiment['verdict']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        # 2. Live Signals
+        signals = get_trading_data()
         if signals:
-            for s in signals:
-                st.markdown(f"""<div class="purple-box" style="border-left: 10px solid {s['color']}">
-                    <h3 style="margin:0;">{s['name']}</h3>
-                    <h1 style="color:{s['color']} !important;">{s['signal']}</h1>
-                    <h2 style="color:#FFD700 !important;">₹{s['price']:,.2f}</h2>
-                </div>""", unsafe_allow_html=True)
-        else:
-            st.warning("Market ഡാറ്റ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.")
+            cols = st.columns(len(signals))
+            for i, s in enumerate(signals):
+                with cols[i]:
+                    st.markdown(f"""
+                        <div class="premium-card">
+                            <p style="margin:0; font-size:14px;">{s['name']}</p>
+                            <h3 style="color:{s['color']} !important;">{s['signal']}</h3>
+                            <p style="font-size:18px; color:#FFD700;">₹{s['price']:,.2f}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+        else: st.warning("Market Data unavailable.")
 
-    elif page == "🔍 History":
-        st.title("Transaction History 📜")
+    elif page == "📜 History":
+        st.title("Recent Activity")
         try:
             df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
             st.dataframe(df.iloc[::-1], use_container_width=True)
-        except: st.error("No Data Found")
+        except: st.write("History not found.")
