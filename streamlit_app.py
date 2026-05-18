@@ -1,88 +1,51 @@
 import streamlit as st
 import pandas as pd
-import requests
 from datetime import datetime
-import yfinance as yf
-import random
-import plotly.express as px
-from streamlit_mic_recorder import speech_to_text
-from streamlit_autorefresh import st_autorefresh
-import urllib.parse
-import threading
 
-# --- 1. CONFIG & SETTINGS ---
-CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRccfZch3jSdHqrScpqsR_j3FSd70NbELC1j6_nPi-MQXdrhVr3BPcKoI1nub4mQql727pQRPWYk9C-/pub?gid=1583146028&single=true&output=csv"
-FORM_API = "https://docs.google.com/forms/d/e/1FAIpQLSfLySolQSiRXV0wELNPhUBlKJh77RnJKWc2-uqAM0TPNG3Q5A/formResponse"
-WA_PHONE = "971551347989"
-WA_API_KEY = "7463030"
+# ആപ്പിന്റെ തലക്കെട്ട്
+st.set_page_config(page_title="Expense Tracker 2026", page_icon="💰", layout="centered")
+st.title("💰 പുതിയ എക്സ്പെൻസ് ട്രാക്കർ")
+st.write("നിന്റെ ദിവസേനയുള്ള ചിലവുകൾ കൃത്യമായി ട്രാക്ക് ചെയ്യാം.")
 
-USERS = {"faisal": "faisal147", "shabana": "shabana123"}
+# ഒരു താല്ക്കാലിക ഡാറ്റാബേസ് സെറ്റ് ചെയ്യുന്നു (സെഷൻ സ്റ്റേറ്റ്)
+if "expenses" not in st.session_state:
+    st.session_state.expenses = []
 
-st.set_page_config(page_title="PAICHI GOLD v8.1", layout="wide")
-# ഓരോ മിനിറ്റിലും ആപ്പ് തനിയെ റിഫ്രഷ് ആകും (റിമൈൻഡർ ചെക്ക് ചെയ്യാൻ ഇത് സഹായിക്കും)
-st_autorefresh(interval=60000, key="auto_refresh")
-
-if 'auth' not in st.session_state: st.session_state.auth = False
-
-# --- 2. FUNCTIONS ---
-def send_whatsapp(msg):
-    url = f"https://api.callmebot.com/whatsapp.php?phone={WA_PHONE}&text={urllib.parse.quote(msg)}&apikey={WA_API_KEY}"
-    try: requests.get(url, timeout=5)
-    except: pass
-
-def get_data():
-    try:
-        df = pd.read_csv(f"{CSV_URL}&r={random.randint(1,999)}")
-        df.columns = df.columns.str.strip()
-        return df
-    except: return pd.DataFrame()
-
-# --- 3. LOGIN & UI ---
-if not st.session_state.auth:
-    st.title("🔐 Login")
-    u = st.text_input("Username").lower()
-    p = st.text_input("Password", type="password")
-    if st.button("Login"):
-        if USERS.get(u) == p:
-            st.session_state.auth, st.session_state.user = True, u
-            st.rerun()
-else:
-    df = get_data()
-    menu = ["💰 Add Entry", "📊 Report", "🔍 History"]
-    if st.session_state.user == "faisal": menu.insert(0, "📊 Advisor")
+# ഫോം ഡിസൈൻ
+with st.form(key="expense_form", clear_on_submit=True):
+    st.subheader("പുതിയ ചിലവ് ചേർക്കുക")
     
-    page = st.sidebar.radio("Menu", menu)
+    # ഇൻപുട്ടുകൾ
+    date = st.date_input("തീയതി (Date)", datetime.now())
+    amount = st.number_input("തുക (Amount - ₹)", min_value=0.0, step=10.0)
+    category = st.selectbox("ഇനം (Category)", ["ഭക്ഷണം (Food)", "യാത്ര (Travel)", "ഷോപ്പിംഗ് (Shopping)", "റൂം/വാടക", "മറ്റുള്ളവ"])
+    description = st.text_input("വിവരണം (Description)")
+    
+    # സബ്മിറ്റ് ബട്ടൺ
+    submit_button = st.form_submit_button(label="Save Expense")
 
-    if page == "📊 Report":
-        st.title("Monthly Expense Analysis")
-        if not df.empty:
-            df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-            df['Month'] = df['Date'].dt.strftime('%B %Y')
-            month = st.selectbox("Select Month", df['Month'].unique())
-            
-            m_df = df[df['Month'] == month].copy()
-            m_df['Debit'] = pd.to_numeric(m_df['Debit'], errors='coerce').fillna(0)
-            
-            # ചാർട്ട് ശരിയാക്കാൻ കാറ്റഗറി തിരിക്കുന്നു
-            m_df['Category'] = m_df['Item'].apply(lambda x: x.split(':')[0] if ':' in x else 'Others')
-            
-            fig = px.pie(m_df[m_df['Debit'] > 0], values='Debit', names='Category', hole=0.4)
-            fig.update_traces(textposition='inside', textinfo='percent+label')
-            st.plotly_chart(fig, use_container_width=True)
-            st.metric("Total Expense", f"₹{m_df['Debit'].sum():,.2f}")
+# ബട്ടൺ ഞെക്കുമ്പോൾ സംഭവിക്കേണ്ടത്
+if submit_button:
+    if amount > 0 and description:
+        # ഡാറ്റ ലിസ്റ്റിലേക്ക് ചേർക്കുന്നു
+        new_data = {
+            "Date": date.strftime("%Y-%m-%d"),
+            "Amount": amount,
+            "Category": category,
+            "Description": description
+        }
+        st.session_state.expenses.append(new_data)
+        st.success(f"✔️ ₹{amount} വിജയകരമായി ചേർത്തു!")
+    else:
+        st.error("⚠️ ദയവായി തുകയും വിവരങ്ങളും കൃത്യമായി ടൈപ്പ് ചെയ്യുക!")
 
-    elif page == "🔍 History":
-        st.title("Transaction History")
-        st.dataframe(df.iloc[::-1], use_container_width=True)
-
-    # --- 4. SIMPLE REMINDER LOGIC (Faisal Only) ---
-    if st.session_state.user == "faisal":
-        st.sidebar.markdown("---")
-        st.sidebar.subheader("Private Reminder")
-        rem_msg = st.sidebar.text_input("What to remind?")
-        rem_time = st.sidebar.time_input("When?")
-        if st.sidebar.button("Set Reminder"):
-            st.sidebar.success(f"Set for {rem_time}")
-            # ഇവിടെ ശരിക്കും ബാക്ക്ഗ്രൗണ്ടിൽ ചെക്ക് ചെയ്യണമെങ്കിൽ ഡാറ്റാബേസ് വേണം.
-            # തൽക്കാലം സെറ്റ് ചെയ്ത ഉടനെ ഒരു ടെസ്റ്റ് മെസേജ് അയക്കാം:
-            # send_whatsapp(f"Reminder Set: {rem_msg}")
+# ചേർത്ത ചിലവുകൾ താഴെ ഒരു ടേബിൾ ആയി കാണിക്കാൻ
+if st.session_state.expenses:
+    st.write("---")
+    st.subheader("📋 ചേർത്ത ചിലവുകളുടെ ലിസ്റ്റ്")
+    df = pd.DataFrame(st.session_state.expenses)
+    st.dataframe(df, use_container_width=True)
+    
+    # ആകെ ചിലവായ തുക കണക്കാക്കാൻ
+    total = df["Amount"].sum()
+    st.metric(label="ആകെ ചിലവ് (Total Expense)", value=f"₹{total}")
