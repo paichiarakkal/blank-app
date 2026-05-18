@@ -8,8 +8,7 @@ st.set_page_config(page_title="Expense Tracker 2026", page_icon="💰")
 st.title("💰 ഗൂഗിൾ ഷീറ്റ് എക്സ്പെൻസ് ട്രാക്കർ")
 
 # ഗൂഗിൾ ഷീറ്റുമായി കണക്ട് ചെയ്യുന്നു
-# (നിന്റെ ഗൂഗിൾ ഷീറ്റിന്റെ ലിങ്ക് താഴെ നൽകുക)
-url ="https://docs.google.com/spreadsheets/d/1GTeGR2P15HNmSQCb4Z4l7pCmHd3H-jyqQXtXlOL-5Fg/edit?usp=sharing"
+url = "https://docs.google.com/spreadsheets/d/1GTeGR2P15HNmSQCb4Z4l7pCmHd3H-jyqQXtXlOL-5Fg/edit?usp=sharing"
 
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
@@ -20,8 +19,8 @@ except Exception as e:
     st.error("ഗൂഗിൾ ഷീറ്റുമായി കണക്ട് ചെയ്യാൻ പറ്റിയില്ല. ലിങ്ക് ശരിയാണോ എന്ന് നോക്കൂ!")
     existing_data = pd.DataFrame(columns=["Date", "Amount", "Category", "Description"])
 
-# ഇൻപുട്ട് ഫോം
-with tf_form := st.form(key="expense_form", clear_on_submit=True):
+# ഇൻപുട്ട് ഫോം (ഇവിടെയാണ് തിരുത്തിയത്)
+with st.form(key="expense_form", clear_on_submit=True):
     st.subheader("പുതിയ ചിലവ് ചേർക്കുക")
     
     date = st.date_input("തീയതി", datetime.now())
@@ -31,7 +30,7 @@ with tf_form := st.form(key="expense_form", clear_on_submit=True):
     
     submit_button = st.form_submit_button(label="Save to Google Sheet")
 
-# ബട്ടൺ അമർത്തുമ്പോൾ സംഭവിക്കേണ്ടത്
+# બട്ടൺ അമർത്തുമ്പോൾ സംഭവിക്കേണ്ടത്
 if submit_button:
     if amount > 0 and description:
         # പുതിയ ഡാറ്റ ഒരു റോ (Row) ആയി ഉണ്ടാക്കുന്നു
