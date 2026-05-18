@@ -6,3 +6,4 @@ plotly
 streamlit-mic-recorder
 schedule
 streamlit_autorefresh
+gsheets
