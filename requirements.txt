@@ -1,9 +1,7 @@
 streamlit
 pandas
 requests
-yfinance
 plotly
 streamlit-mic-recorder
-schedule
 streamlit_autorefresh
-streamlit-gsheets
+fpdf
