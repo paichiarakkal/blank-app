@@ -287,4 +287,3 @@ else:
                 send_to_google_async(payload)
                 st.success("Saved! ✅")
                 st.session_state.last_row_count += 1
-Ede shariyano
