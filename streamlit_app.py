@@ -5,18 +5,17 @@ import requests
 import datetime
 
 # ==========================================
-# 1. PAGE SETUP & SECURITY
+# 1. PAGE SETUP & SECURE CREDENTIALS
 # ==========================================
 st.set_page_config(page_title="Paichi Trading Bot", layout="wide")
 st.title("📊 Paichi Live Trading Dashboard")
 
-# ⚠️ നിങ്ങളുടെ ഒറിജിനൽ കീകൾ ഇവിടെ സുരക്ഷിതമായി കൊടുക്കുക
-UPSTOX_API_KEY = "7d6580c0-40a7-41fc-9eed-019c9424f6c0"
-UPSTOX_ACCESS_TOKEN = "12ixcu1q9i"
-
-TWILIO_SID = "YOUR_TWILIO_ACCOUNT_SID"  # നിങ്ങളുടെ Twilio SID ഇവിടെ നൽകുക
-TWILIO_TOKEN = "YOUR_TWILIO_AUTH_TOKEN"    # നിങ്ങളുടെ Twilio Token ഇവിടെ നൽകുക
-YOUR_PHONE = "whatsapp:+91XXXXXXXXXX"     # നിങ്ങളുടെ വാട്സാപ്പ് നമ്പർ (+91 ചേർക്കണം)
+# 🔒 Upstox & Twilio കീകൾ സുരക്ഷിതമായി Streamlit Secrets-ൽ നിന്ന് എടുക്കുന്നു
+UPSTOX_API_KEY = st.secrets["UPSTOX_API_KEY"]
+UPSTOX_ACCESS_TOKEN = st.secrets["UPSTOX_ACCESS_TOKEN"]
+TWILIO_SID = st.secrets["TWILIO_SID"]
+TWILIO_TOKEN = st.secrets["TWILIO_TOKEN"]
+YOUR_PHONE = st.secrets["YOUR_PHONE"]
 
 # ==========================================
 # 2. UPSTOX LIVE DATA FUNCTION (LTP)
@@ -68,8 +67,7 @@ def send_whatsapp_alert(symbol, signal_type, price):
 # ==========================================
 st.subheader("Live Market Signals (Upstox API)")
 
-# Crude Oil & Nifty-യുടെ Upstox Instrument Keys (ഉദാഹരണത്തിന്)
-# (യഥാർത്ഥ കോൺട്രാക്ട് അനുസരിച്ച് ഈ Keys മാറാം ഭായ്)
+# Crude Oil & Nifty-യുടെ Upstox Instrument Keys
 instruments = {
     "NSE_INDEX|Nifty 50": "NIFTY 50",
     "MCX_FO|CRUDEOIL26JUNFUT": "CRUDE OIL"  # നിലവിലെ ജൂൺ ഫ്യൂച്ചർ കീ
@@ -83,7 +81,6 @@ for key, symbol in instruments.items():
     
     if price:
         # തൽക്കാലം ഒരു സൂപ്പർട്രെൻഡ് ലോജിക് മാതൃകയ്ക്ക് വേണ്ടി വെക്കുന്നു
-        # വില ഒരു നിശ്ചിത ലെവലിന് മുകളിലാണെങ്കിൽ BUY, താഴെയാണെങ്കിൽ SELL
         mock_supertrend = "BUY" if symbol == "NIFTY 50" else "SELL"
         
         live_data.append({
@@ -101,8 +98,8 @@ st.write("---")
 st.subheader("Manual Controls")
 
 if st.button("🚀 Send Live Signal to WhatsApp"):
-    if live_data:
-        # Crude Oil സിഗ്നൽ ടെസ്റ്റ് ചെയ്യുന്നു
+    if len(live_data) >= 2:
+        # Crude Oil സിഗ്നൽ ടെസ്റ്റ് ചെയ്യുന്നു (ലിസ്റ്റിലെ രണ്ടാമത്തെ ഐറ്റം)
         crude_symbol = live_data[1]["Instrument"]
         crude_price = live_data[1]["Live Price (LTP)"]
         crude_signal = live_data[1]["Supertrend Status"]
@@ -112,4 +109,4 @@ if st.button("🚀 Send Live Signal to WhatsApp"):
             if success:
                 st.success("Upstox ലൈവ് വില വെച്ചുള്ള വാട്സാപ്പ് മെസ്സേജ് പക്കാ ആയി പോയിട്ടുണ്ട് ഭായ്! ✅")
     else:
-        st.warning("Upstox-ൽ നിന്ന് ഡാറ്റ ഒന്നും കിട്ടിയിട്ടില്ല ഭായ്. Access Token കാലാവധി കഴിഞ്ഞതാണോ എന്ന് ചെക്ക് ചെയ്യൂ.")
+        st.warning("Upstox-ൽ നിന്ന് ലൈവ് ഡാറ്റ എടുക്കാൻ പറ്റിയിട്ടില്ല ഭായ്. Secrets കറക്റ്റ് ആണോ എന്ന് ചെക്ക് ചെയ്യൂ.")
