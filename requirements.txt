@@ -1,9 +1,4 @@
 streamlit
 pandas
 requests
-plotly
-streamlit-mic-recorder
-streamlit_autorefresh
-fpdf
 twilio
-Yahoo Finance
