@@ -4,6 +4,7 @@ import requests
 from datetime import datetime
 import yfinance as yf
 import urllib.parse
+import os
 from streamlit_autorefresh import st_autorefresh
 
 # --- 1. CONFIG & SETTINGS ---
@@ -13,10 +14,25 @@ WA_API_KEY = "7463030"
 USERS = {"faisal": "faisal147", "shabana": "shabana123", "admin": "paichi786"}
 
 st.set_page_config(page_title="PAICHI GOLD TRADING v8.0", layout="wide")
-# 1 മിനിറ്റിൽ ആപ്പ് ഓട്ടോമാറ്റിക് ആയി റിഫ്രഷ് ആയി ലൈവ് വിലകൾ അപ്‌ഡേറ്റ് ചെയ്യും
+# 60 സെക്കൻഡിൽ പേജ് ഓട്ടോ റിഫ്രഷ് ചെയ്യും
 st_autorefresh(interval=60000, key="auto_refresh")
 
-# --- 2. 🎨 PREMIUM DARK & PURPLE DESIGN ---
+# --- 2. 💾 PERMANENT FILE MEMORY FUNCTION ---
+def get_stored_signal(asset_name):
+    """ഫയലിൽ സൂക്ഷിച്ചിരിക്കുന്ന പഴയ സിഗ്നൽ എടുക്കുന്നു"""
+    filename = f"sig_{asset_name.replace(' ', '_')}.txt"
+    if os.path.exists(filename):
+        with open(filename, "r") as f:
+            return f.read().strip()
+    return ""
+
+def save_signal_to_file(asset_name, signal_text):
+    """പുതിയ സിഗ്നൽ ഫയലിലേക്ക് സേവ് ചെയ്യുന്നു"""
+    filename = f"sig_{asset_name.replace(' ', '_')}.txt"
+    with open(filename, "w") as f:
+        f.write(signal_text)
+
+# --- 3. 🎨 PREMIUM DESIGN ---
 st.markdown("""
     <style>
     .stApp { background: linear-gradient(135deg, #2D0844, #4B0082, #1A0521); color: #fff; }
@@ -31,7 +47,7 @@ st.markdown("""
 if 'auth' not in st.session_state: st.session_state.auth = False
 if 'user' not in st.session_state: st.session_state.user = ""
 
-# --- 3. 🚀 CALLMEBOT WHATSAPP ENGINE ---
+# --- 4. 🚀 CALLMEBOT ENGINE ---
 def send_callmebot_whatsapp(message_text):
     url = f"https://api.callmebot.com/whatsapp.php?phone={WA_PHONE}&text={urllib.parse.quote(message_text)}&apikey={WA_API_KEY}"
     try:
@@ -40,7 +56,7 @@ def send_callmebot_whatsapp(message_text):
     except:
         return False
 
-# --- 4. 📈 TRIPLE ADVISOR ENGINE (YAHOO FINANCE) ---
+# --- 5. 📈 TRIPLE ADVISOR ENGINE ---
 def get_triple_advisor():
     try:
         symbols = {"Nifty 50": "^NSEI", "Bank Nifty": "^NSEBANK", "Crude Fut": "CL=F"}
@@ -56,12 +72,10 @@ def get_triple_advisor():
             loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
             rsi = 100 - (100 / (1 + (gain / loss).iloc[-1]))
             
-            # സൂപ്പർട്രെൻഡ് & RSI ലോജിക്
             if last_p > pivot and rsi > 55: signal, color, icon = "🚀 BUY", "#00FF00", "🟢"
             elif last_p < pivot and rsi < 45: signal, color, icon = "📉 SELL", "#FF3131", "🔴"
             else: signal, color, icon = "⚖️ WAIT", "#FFFF00", "🟡"
             
-            # ക്രൂഡ് ഓയിൽ കറൻസി കൺവേർഷൻ ഇന്ത്യൻ രൂപയിലേക്ക്
             if name == "Crude Fut": 
                 last_p = last_p * 83.5 * 1.15
                 
@@ -70,7 +84,7 @@ def get_triple_advisor():
     except:
         return None
 
-# --- 5. APP MAIN APP ---
+# --- 6. MAIN APP ---
 if not st.session_state.auth:
     st.markdown('<div style="text-align:center; padding-top:50px;"><h1>🔐 PAICHI TRADING BOT LOGIN</h1></div>', unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -81,68 +95,70 @@ if not st.session_state.auth:
             if USERS.get(u) == p:
                 st.session_state.auth, st.session_state.user = True, u
                 st.rerun()
-            else: 
-                st.error("Access Denied! Wrong Credentials.")
+            else: st.error("Access Denied!")
 else:
     curr_user = st.session_state.user
     
     st.markdown(f'''<div class="terminal-banner">
-        <span style="font-size:24px; color: #FFD700; font-weight:bold;">🚀 PAICHI LIVE TRADING TERMINAL v8.0</span><br>
-        <span style="font-size:14px; color:#E0B0FF;">Welcome back, {curr_user.capitalize()} | Market auto-refreshes every 60s</span>
+        <span style="font-size:24px; color: #FFD700; font-weight:bold;">🚀 PAICHI AUTOMATIC TRADING TERMINAL v8.5</span><br>
+        <span style="font-size:14px; color:#E0B0FF;">Welcome, {curr_user.capitalize()} | 🤖 Hard-Drive Auto-Alerts Enabled</span>
     </div>''', unsafe_allow_html=True)
 
-    # സൈഡ്ബാറിൽ ലോഗ്ഔട്ട് മാത്രം
     if st.sidebar.button("Logout"): 
         st.session_state.auth = False
         st.rerun()
 
-    # --- 📊 LIVE TRADING DISPLAY ---
-    st.subheader("Live Market Signals & Pivot Advisor")
     markets = get_triple_advisor()
     
+    # --- 🤖 AUTOMATIC ALERT CHECKER (PERMANENT) ---
     if markets:
-        # മൂന്ന് മാർക്കറ്റുകൾക്കും വേണ്ടി മൂന്ന് കോളങ്ങൾ
+        for m in markets:
+            asset_name = m["name"]
+            current_signal = m["signal"]
+            
+            # ഫയലിൽ നിന്നും പഴയ സിഗ്നൽ എടുക്കുന്നു
+            paya_signal = get_stored_signal(asset_name)
+            
+            # പഴയ സിഗ്നലും പുതിയ സിഗ്നലും മാറിയാൽ മാത്രം വാട്സാപ്പ് അയക്കും
+            if paya_signal != current_signal:
+                now_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                auto_msg = (
+                    f"{m['icon']} *AUTOMATIC SIGNAL ALERT* {m['icon']}\n\n"
+                    f"📦 *Asset:* {asset_name}\n"
+                    f"🚦 *New Signal:* {current_signal}\n"
+                    f"💰 *Price:* ₹{m['price']:,.2f}\n"
+                    f"📊 *RSI:* {m['rsi']:.2f}\n"
+                    f"⏰ *Time:* {now_time}\n\n"
+                    f"🤖 _Paichi Engine Auto-Notification_"
+                )
+                # CallMeBot വഴി അയക്കുന്നു
+                send_callmebot_whatsapp(auto_msg)
+                # പുതിയ സിഗ്നൽ ഫയലിലേക്ക് മാറ്റിയെഴുതുന്നു
+                save_signal_to_file(asset_name, current_signal)
+
+    # --- LIVE DISPLAY ---
+    st.subheader("Live Market Signals (Auto-Updates Every 60s)")
+    if markets:
         cols = st.columns(3)
         for i, m in enumerate(markets):
             with cols[i]:
                 st.markdown(f"""<div class="purple-box" style="border-color: {m['color']} !important;">
-                    <h2 style="color:#E0B0FF !important; margin-bottom:5px;">{m["name"]}</h2>
-                    <h1 style="color:{m["color"]} !important; font-size:48px; margin:10px 0;">{m["signal"]}</h1>
-                    <h1 style="color:#FFD700 !important; font-size:38px; margin-bottom:5px;">₹{m["price"]:,.2f}</h1>
+                    <h2 style="color:#E0B0FF !important;">{m["name"]}</h2>
+                    <h1 style="color:{m["color"]} !important; font-size:48px;">{m["signal"]}</h1>
+                    <h1 style="color:#FFD700 !important; font-size:38px;">₹{m["price"]:,.2f}</h1>
                     <span style="color:#aaa; font-size:14px;">RSI (14): {m["rsi"]:.2f}</span>
                 </div>""", unsafe_allow_html=True)
     else:
-        st.warning("Fetching Live Market Data... Please wait.")
+        st.warning("Fetching Market Data...")
 
     st.write("---")
-    
-    # --- 📲 MANUAL WHATSAPP ALERTS ---
-    st.subheader("Send Signal Manually To WhatsApp")
-    
+    st.subheader("Manual Backup Controls")
     if markets:
-        # വാട്സാപ്പിലേക്ക് അയക്കേണ്ട ഇൻസ്ട്രുമെന്റ് സെലക്ട് ചെയ്യാം
-        selected_market = st.selectbox("Select Asset to Send Alert", [m["name"] for m in markets])
-        
-        # സെലക്ട് ചെയ്ത അസ്സറ്റിന്റെ ഡാറ്റ എടുക്കുന്നു
+        selected_market = st.selectbox("Select Asset for Manual Alert", [m["name"] for m in markets])
         market_data = next(item for item in markets if item["name"] == selected_market)
         
-        if st.button(f"🚀 Send {market_data['name']} Signal to WhatsApp"):
-            with st.spinner("CallMeBot വഴി വാട്സാപ്പിലേക്ക് അലേർട്ട് അയക്കുന്നു..."):
-                now_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                
-                # ഭംഗിയുള്ള വാട്സാപ്പ് മെസ്സേജ് ഫോർമാറ്റ്
-                wa_msg = (
-                    f"{market_data['icon']} *NEW TRADING SIGNAL* {market_data['icon']}\n\n"
-                    f"📦 *Asset:* {market_data['name']}\n"
-                    f"🚦 *Signal:* {market_data['signal']}\n"
-                    f"💰 *Live Price:* ₹{market_data['price']:,.2f}\n"
-                    f"📊 *RSI:* {market_data['rsi']:.2f}\n"
-                    f"⏰ *Time:* {now_time}\n\n"
-                    f"👤 *Sent By:* Paichi Bot ({curr_user.capitalize()})"
-                )
-                
-                success = send_callmebot_whatsapp(wa_msg)
-                if success:
-                    st.success(f"✅ {market_data['name']} സിഗ്നൽ വിജയകരമായി നിങ്ങളുടെ വാട്സാപ്പിലേക്ക് അയച്ചിട്ടുണ്ട് ഭായ്!")
-                else:
-                    st.error("❌ മെസ്സേജ് അയക്കാൻ പറ്റിയില്ല. CallMeBot API കീ ഒന്നുകൂടി ചെക്ക് ചെയ്യൂ.")
+        if st.button(f"🚀 Force Send {market_data['name']} Signal"):
+            now_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            wa_msg = f"{market_data['icon']} *MANUAL SIGNAL* {market_data['icon']}\n\nAsset: {market_data['name']}\nSignal: {market_data['signal']}\nPrice: ₹{market_data['price']:,.2f}\nTime: {now_time}"
+            if send_callmebot_whatsapp(wa_msg):
+                st.success("Manual Alert Sent! ✅")
