@@ -13,13 +13,11 @@ WA_API_KEY = "7463030"
 
 USERS = {"faisal": "faisal147", "shabana": "shabana123", "admin": "paichi786"}
 
-st.set_page_config(page_title="PAICHI GOLD TRADING v8.0", layout="wide")
-# 60 സെക്കൻഡിൽ പേജ് ഓട്ടോ റിഫ്രഷ് ചെയ്യും
+st.set_page_config(page_title="PAICHI GOLD TRADING v8.6", layout="wide")
 st_autorefresh(interval=60000, key="auto_refresh")
 
 # --- 2. 💾 PERMANENT FILE MEMORY FUNCTION ---
 def get_stored_signal(asset_name):
-    """ഫയലിൽ സൂക്ഷിച്ചിരിക്കുന്ന പഴയ സിഗ്നൽ എടുക്കുന്നു"""
     filename = f"sig_{asset_name.replace(' ', '_')}.txt"
     if os.path.exists(filename):
         with open(filename, "r") as f:
@@ -27,7 +25,6 @@ def get_stored_signal(asset_name):
     return ""
 
 def save_signal_to_file(asset_name, signal_text):
-    """പുതിയ സിഗ്നൽ ഫയലിലേക്ക് സേവ് ചെയ്യുന്നു"""
     filename = f"sig_{asset_name.replace(' ', '_')}.txt"
     with open(filename, "w") as f:
         f.write(signal_text)
@@ -56,7 +53,7 @@ def send_callmebot_whatsapp(message_text):
     except:
         return False
 
-# --- 5. 📈 TRIPLE ADVISOR ENGINE ---
+# --- 5. 📈 TRIPLE ADVISOR ENGINE WITH TARGET & SL ---
 def get_triple_advisor():
     try:
         symbols = {"Nifty 50": "^NSEI", "Bank Nifty": "^NSEBANK", "Crude Fut": "CL=F"}
@@ -66,20 +63,43 @@ def get_triple_advisor():
             if df.empty: continue
             last_p = df['Close'].iloc[-1]
             h, l, c = df['High'].iloc[-2], df['Low'].iloc[-2], df['Close'].iloc[-2]
+            
+            # Pivot, Resistance, and Support Calculations
             pivot = (h + l + c) / 3
+            r1 = (2 * pivot) - l
+            s1 = (2 * pivot) - h
+            
             delta = df['Close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
             rsi = 100 - (100 / (1 + (gain / loss).iloc[-1]))
             
-            if last_p > pivot and rsi > 55: signal, color, icon = "🚀 BUY", "#00FF00", "🟢"
-            elif last_p < pivot and rsi < 45: signal, color, icon = "📉 SELL", "#FF3131", "🔴"
-            else: signal, color, icon = "⚖️ WAIT", "#FFFF00", "🟡"
-            
+            # കറൻസി കൺവേർഷൻ ഫോർ ക്രൂഡ് ഓയിൽ
             if name == "Crude Fut": 
                 last_p = last_p * 83.5 * 1.15
+                pivot = pivot * 83.5 * 1.15
+                r1 = r1 * 83.5 * 1.15
+                s1 = s1 * 83.5 * 1.15
+            
+            # Target & SL ലോജിക് സെറ്റ് ചെയ്യുന്നു
+            if last_p > pivot and rsi > 55: 
+                signal, color, icon = "🚀 BUY", "#00FF00", "🟢"
+                target = r1
+                stoploss = pivot
+            elif last_p < pivot and rsi < 45: 
+                signal, color, icon = "📉 SELL", "#FF3131", "🔴"
+                target = s1
+                stoploss = pivot
+            else: 
+                signal, color, icon = "⚖️ WAIT", "#FFFF00", "🟡"
+                target = last_p
+                stoploss = last_p
                 
-            results.append({"name": name, "price": last_p, "signal": signal, "rsi": rsi, "color": color, "icon": icon})
+            results.append({
+                "name": name, "price": last_p, "signal": signal, 
+                "rsi": rsi, "color": color, "icon": icon,
+                "target": target, "stoploss": stoploss
+            })
         return results
     except:
         return None
@@ -100,8 +120,8 @@ else:
     curr_user = st.session_state.user
     
     st.markdown(f'''<div class="terminal-banner">
-        <span style="font-size:24px; color: #FFD700; font-weight:bold;">🚀 PAICHI AUTOMATIC TRADING TERMINAL v8.5</span><br>
-        <span style="font-size:14px; color:#E0B0FF;">Welcome, {curr_user.capitalize()} | 🤖 Hard-Drive Auto-Alerts Enabled</span>
+        <span style="font-size:24px; color: #FFD700; font-weight:bold;">🚀 PAICHI AUTOMATIC TRADING TERMINAL v8.6</span><br>
+        <span style="font-size:14px; color:#E0B0FF;">Welcome, {curr_user.capitalize()} | 🎯 Target & SL Engine Active</span>
     </div>''', unsafe_allow_html=True)
 
     if st.sidebar.button("Logout"): 
@@ -110,34 +130,37 @@ else:
 
     markets = get_triple_advisor()
     
-    # --- 🤖 AUTOMATIC ALERT CHECKER (PERMANENT) ---
+    # --- 🤖 AUTOMATIC ALERT CHECKER WITH TGT & SL ---
     if markets:
         for m in markets:
             asset_name = m["name"]
             current_signal = m["signal"]
-            
-            # ഫയലിൽ നിന്നും പഴയ സിഗ്നൽ എടുക്കുന്നു
             paya_signal = get_stored_signal(asset_name)
             
-            # പഴയ സിഗ്നലും പുതിയ സിഗ്നലും മാറിയാൽ മാത്രം വാട്സാപ്പ് അയക്കും
             if paya_signal != current_signal:
                 now_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                
+                # വാട്സാപ്പ് അലേർട്ടിൽ Target, SL വിവരങ്ങൾ ചേർക്കുന്നു
+                tgt_sl_text = ""
+                if current_signal != "⚖️ WAIT":
+                    tgt_sl_text = f"🎯 *Target:* ₹{m['target']:,.2f}\n🛡️ *Stoploss (SL):* ₹{m['stoploss']:,.2f}\n\n"
+                
                 auto_msg = (
                     f"{m['icon']} *AUTOMATIC SIGNAL ALERT* {m['icon']}\n\n"
                     f"📦 *Asset:* {asset_name}\n"
                     f"🚦 *New Signal:* {current_signal}\n"
-                    f"💰 *Price:* ₹{m['price']:,.2f}\n"
+                    f"💰 *Entry Price:* ₹{m['price']:,.2f}\n"
+                    f"{tgt_sl_text}"
                     f"📊 *RSI:* {m['rsi']:.2f}\n"
                     f"⏰ *Time:* {now_time}\n\n"
-                    f"🤖 _Paichi Engine Auto-Notification_"
+                    f"🤖 _Paichi Target & SL Engine_"
                 )
-                # CallMeBot വഴി അയക്കുന്നു
+                
                 send_callmebot_whatsapp(auto_msg)
-                # പുതിയ സിഗ്നൽ ഫയലിലേക്ക് മാറ്റിയെഴുതുന്നു
                 save_signal_to_file(asset_name, current_signal)
 
     # --- LIVE DISPLAY ---
-    st.subheader("Live Market Signals (Auto-Updates Every 60s)")
+    st.subheader("Live Market Signals (Target & SL Included)")
     if markets:
         cols = st.columns(3)
         for i, m in enumerate(markets):
@@ -145,8 +168,9 @@ else:
                 st.markdown(f"""<div class="purple-box" style="border-color: {m['color']} !important;">
                     <h2 style="color:#E0B0FF !important;">{m["name"]}</h2>
                     <h1 style="color:{m["color"]} !important; font-size:48px;">{m["signal"]}</h1>
-                    <h1 style="color:#FFD700 !important; font-size:38px;">₹{m["price"]:,.2f}</h1>
-                    <span style="color:#aaa; font-size:14px;">RSI (14): {m["rsi"]:.2f}</span>
+                    <h1 style="color:#FFD700 !important; font-size:35px;">₹{m["price"]:,.2f}</h1>
+                    {"<p style='color:#00FF00 !important; margin:0;'>TGT: ₹"+f"{m['target']:,.2f}"+"</p><p style='color:#FF3131 !important; margin:0;'>SL: ₹"+f"{m['stoploss']:,.2f}"+"</p>" if m["signal"] != "⚖️ WAIT" else ""}
+                    <span style="color:#aaa; font-size:12px;">RSI: {m["rsi"]:.2f}</span>
                 </div>""", unsafe_allow_html=True)
     else:
         st.warning("Fetching Market Data...")
@@ -159,6 +183,10 @@ else:
         
         if st.button(f"🚀 Force Send {market_data['name']} Signal"):
             now_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            wa_msg = f"{market_data['icon']} *MANUAL SIGNAL* {market_data['icon']}\n\nAsset: {market_data['name']}\nSignal: {market_data['signal']}\nPrice: ₹{market_data['price']:,.2f}\nTime: {now_time}"
+            tgt_sl_manual = ""
+            if market_data['signal'] != "⚖️ WAIT":
+                tgt_sl_manual = f"\n🎯 Target: ₹{market_data['target']:,.2f}\n🛡️ SL: ₹{market_data['stoploss']:,.2f}\n"
+                
+            wa_msg = f"{market_data['icon']} *MANUAL SIGNAL* {market_data['icon']}\n\nAsset: {market_data['name']}\nSignal: {market_data['signal']}\nPrice: ₹{market_data['price']:,.2f}{tgt_sl_manual}\nTime: {now_time}"
             if send_callmebot_whatsapp(wa_msg):
                 st.success("Manual Alert Sent! ✅")
