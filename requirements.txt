@@ -1,14 +1,3 @@
-pandas
-yfinance
-requests
 streamlit
-streamlit-autorefresh
-streamlit-mic_recorder
-plotly
-fpdf2
-gspread
-oauth2client
-streamlit-calendar
-google-generativeai
-flask
-twilio
+yt-dlp
+requests
