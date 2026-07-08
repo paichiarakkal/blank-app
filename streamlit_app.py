@@ -1,74 +1,43 @@
 import streamlit as st
 import yt_dlp
-import ffmpeg
-import os
 
-st.set_page_config(page_title="Video Pro Hub", layout="wide")
+# ആപ്പിന്റെ ലേഔട്ട്
+st.set_page_config(page_title="720p Video Downloader", page_icon="🎥")
+st.title("720p Video Downloader 🚀")
+st.write("ലിങ്ക് പേസ്റ്റ് ചെയ്ത് 720p ക്വാളിറ്റിയിൽ വീഡിയോ ഡൗൺലോഡ് ചെയ്യാം.")
 
-# 1. ലോഗിൻ സിസ്റ്റം
-if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+url = st.text_input("വീഡിയോ ലിങ്ക് ഇവിടെ പേസ്റ്റ് ചെയ്യുക:")
 
-if not st.session_state.logged_in:
-    st.title("🔐 ലോഗിൻ ചെയ്യുക")
-    user = st.text_input("Username")
-    pwd = st.text_input("Password", type="password")
-    if st.button("Login"):
-        if user == "Faisal" and pwd == "12345": 
-            st.session_state.logged_in = True
-            st.rerun()
-        else:
-            st.error("തെറ്റായ വിവരങ്ങൾ!")
-    st.stop()
-
-# 2. മെയിൻ ആപ്പ്
-st.title("🎬 ഓൾ-ഇൻ-വൺ വീഡിയോ പ്രോസസ്സിംഗ് ഹബ്ബ്")
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📥 ഡൗൺലോഡർ", "🔄 കൺവെർട്ടർ", "✂️ ട്രിമ്മർ", "🔗 മെർജിംഗ്", "🔊 അഡ്വാൻസ്ഡ്"])
-
-with tab1: # ഡൗൺലോഡർ
-    url = st.text_input("YouTube ലിങ്ക്:")
-    if st.button("Download"):
-        with yt_dlp.YoutubeDL({'format': 'best', 'http_headers': {'User-Agent': 'Mozilla/5.0'}}) as ydl:
-            info = ydl.extract_info(url, download=False)
-            st.video(info.get('url'))
-
-with tab2: # കൺവെർട്ടർ
-    file = st.file_uploader("വീഡിയോ അപ്‌ലോഡ്", type=['mp4'], key="c1")
-    fmt = st.selectbox("ഫോർമാറ്റ്:", ['mp4', 'avi', 'mov'])
-    if file and st.button("Convert"):
-        with open("in.mp4", "wb") as f: f.write(file.getbuffer())
-        ffmpeg.input("in.mp4").output(f"out.{fmt}").run(overwrite_output=True)
-        with open(f"out.{fmt}", "rb") as f: st.download_button("ഡൗൺലോഡ്", f, file_name=f"out.{fmt}")
-
-with tab3: # ട്രിമ്മർ
-    start = st.number_input("തുടങ്ങേണ്ട സമയം (sec)", value=0)
-    dur = st.number_input("ദൈർഘ്യം (sec)", value=10)
-    file_t = st.file_uploader("വീഡിയോ അപ്‌ലോഡ്", type=['mp4'], key="t1")
-    if file_t and st.button("Trim"):
-        with open("in_trim.mp4", "wb") as f: f.write(file_t.getbuffer())
-        ffmpeg.input("in_trim.mp4", ss=start, t=dur).output("trimmed.mp4").run(overwrite_output=True)
-        with open("trimmed.mp4", "rb") as f: st.download_button("ഡൗൺലോഡ്", f, file_name="trimmed.mp4")
-
-with tab4: # മെർജിംഗ്
-    files = st.file_uploader("വീഡിയോകൾ അപ്‌ലോഡ് ചെയ്യുക", type=['mp4'], accept_multiple_files=True, key="m1")
-    if files and st.button("Merge Now"):
-        file_list = []
-        for i, f in enumerate(files):
-            with open(f"f{i}.mp4", "wb") as wf: wf.write(f.getbuffer())
-            file_list.append(ffmpeg.input(f"f{i}.mp4"))
-        ffmpeg.concat(*file_list).output("merged.mp4").run(overwrite_output=True)
-        with open("merged.mp4", "rb") as f: st.download_button("ഡൗൺലോഡ് മെർജ് ചെയ്ത വീഡിയോ", f, "merged.mp4")
-
-with tab5: # മ്യൂട്ട് & സ്പീഡ്
-    file_a = st.file_uploader("വീഡിയോ അപ്‌ലോഡ്", type=['mp4'], key="a1")
-    act = st.selectbox("ഓപ്ഷൻ:", ["മ്യൂട്ട് ചെയ്യുക", "വേഗത കൂട്ടുക (2x)"])
-    if file_a and st.button("Apply"):
-        with open("adv.mp4", "wb") as f: f.write(file_a.getbuffer())
-        if act == "മ്യൂട്ട് ചെയ്യുക":
-            ffmpeg.input("adv.mp4").output("out_adv.mp4", an=None).run(overwrite_output=True)
-        else:
-            ffmpeg.input("adv.mp4").output("out_adv.mp4", filter_complex="setpts=0.5*PTS").run(overwrite_output=True)
-        with open("out_adv.mp4", "rb") as f: st.download_button("ഡൗൺലോഡ്", f, "output.mp4")
-
-if st.sidebar.button("Logout"):
-    st.session_state.logged_in = False
-    st.rerun()
+if st.button("Download 720p Video"):
+    if url:
+        st.info("വീഡിയോ പ്രോസസ്സ് ചെയ്യുന്നു, ദയവായി കാത്തിരിക്കുക...")
+        
+        # 720p ഫോർമാറ്റ് സെലക്ട് ചെയ്യുന്നു
+        # 'best[height<=720][ext=mp4]' എന്നത് 720p അല്ലെങ്കിൽ അതിൽ താഴെയുള്ള ഏറ്റവും മികച്ച mp4 വീഡിയോ എടുക്കും
+        ydl_opts = {
+            'format': 'best[height<=720][ext=mp4]/best[ext=mp4]',
+            'nocheckcertificate': True,
+            'quiet': True,
+            'no_warnings': True,
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+            }
+        }
+        
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                video_url = info.get('url')
+                title = info.get('title', 'video')
+                
+            if video_url:
+                st.success(f"വിജയകരമായി ലഭിച്ചു: {title}")
+                st.video(video_url)
+                st.markdown(f'[ഡൗൺലോഡ് ചെയ്യാൻ ഇവിടെ ഞെക്കുക ⬇️]({video_url})')
+            else:
+                st.error("ക്ഷമിക്കണം, ഈ വീഡിയോയുടെ 720p ലിങ്ക് കണ്ടെത്താൻ കഴിഞ്ഞില്ല.")
+                
+        except Exception as e:
+            st.error(f"എറർ സംഭവിച്ചു: {e}")
+    else:
+        st.warning("ദയവായി ഒരു വീഡിയോ ലിങ്ക് നൽകുക!")
