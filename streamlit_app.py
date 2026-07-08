@@ -10,10 +10,10 @@ if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
     st.title("🔐 ലോഗിൻ ചെയ്യുക")
-    user = st.text_input("paichi")
-    pwd = st.text_input("Password", type="@#12")
+    user = st.text_input("Username")
+    pwd = st.text_input("Password", type="password")
     if st.button("Login"):
-        if user == "admin" and pwd == "1234":
+        if user == "paichi" and pwd == "1011":
             st.session_state.logged_in = True
             st.rerun()
         else:
