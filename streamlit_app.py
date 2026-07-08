@@ -3,56 +3,64 @@ import yt_dlp
 import ffmpeg
 import os
 
-# പേജ് കോൺഫിഗറേഷൻ
 st.set_page_config(page_title="Video Hub", layout="wide")
+
+# ലോഗിൻ സിസ്റ്റം
+if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+
+if not st.session_state.logged_in:
+    st.title("🔐 ലോഗിൻ ചെയ്യുക")
+    user = st.text_input("Username")
+    pwd = st.text_input("Password", type="password")
+    if st.button("Login"):
+        if user == "admin" and pwd == "1234":
+            st.session_state.logged_in = True
+            st.rerun()
+        else:
+            st.error("തെറ്റായ വിവരങ്ങൾ!")
+    st.stop()
+
+# പ്രധാന ആപ്പ് ഭാഗം
 st.title("🎬 വീഡിയോ പ്രോസസ്സിംഗ് ഹബ്ബ്")
+tab1, tab2, tab3, tab4 = st.tabs(["📥 ഡൗൺലോഡർ", "🔄 കൺവെർട്ടർ", "✂️ എഡിറ്റർ (ട്രിമ്മിംഗ്)", "ℹ️ മെറ്റാഡാറ്റ"])
 
-# ടാബുകൾ
-tab1, tab2, tab3 = st.tabs(["📥 ഡൗൺലോഡർ", "🔄 കൺവെർട്ടർ", "ℹ️ മെറ്റാഡാറ്റ"])
-
-# 1. വീഡിയോ ഡൗൺലോഡർ
+# 1. ഡൗൺലോഡർ
 with tab1:
-    st.header("വീഡിയോ ഡൗൺലോഡ് ചെയ്യുക")
-    url = st.text_input("യൂട്യൂബ് ലിങ്ക് ഇവിടെ നൽകുക:")
-    if st.button("Download 720p Video"):
-        if url:
-            ydl_opts = {
-                'format': 'best[height<=720][ext=mp4]/best[ext=mp4]',
-                'http_headers': {'User-Agent': 'Mozilla/5.0'}
-            }
-            try:
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(url, download=False)
-                    video_url = info.get('url')
-                    st.video(video_url)
-                    st.success("വീഡിയോ റെഡി!")
-            except Exception as e:
-                st.error(f"എറർ: {e}")
-
-# 2. ഫോർമാറ്റ് കൺവെർട്ടർ
-with tab2:
-    st.header("ഫോർമാറ്റ് മാറ്റുക")
-    uploaded_file = st.file_uploader("വീഡിയോ അപ്‌ലോഡ് ചെയ്യുക", type=['mp4', 'mkv'])
-    format_option = st.selectbox("ഏത് ഫോർമാറ്റിലേക്ക് മാറ്റണം?", ['mp4', 'avi', 'mov'])
-    
-    if uploaded_file and st.button("കൺവെർട്ട് ചെയ്യുക"):
-        with open("input.mp4", "wb") as f:
-            f.write(uploaded_file.getbuffer())
-        
-        output_file = f"output.{format_option}"
+    url = st.text_input("YouTube ലിങ്ക്:")
+    if st.button("Download 720p"):
         try:
-            ffmpeg.input("input.mp4").output(output_file).run()
-            with open(output_file, "rb") as f:
-                st.download_button("ഡൗൺലോഡ് ചെയ്യുക", f, file_name=output_file)
-            st.success("കൺവേർഷൻ പൂർത്തിയായി!")
-        except Exception as e:
-            st.error(f"പിശക്: {e}")
+            with yt_dlp.YoutubeDL({'format': 'best[height<=720]'}) as ydl:
+                info = ydl.extract_info(url, download=False)
+                st.video(info.get('url'))
+        except Exception as e: st.error(e)
 
-# 3. മെറ്റാഡാറ്റ
+# 2. കൺവെർട്ടർ
+with tab2:
+    file = st.file_uploader("വീഡിയോ അപ്‌ലോഡ് ചെയ്യുക", type=['mp4', 'mkv'])
+    fmt = st.selectbox("ഏത് ഫോർമാറ്റിലേക്ക്?", ['mp4', 'avi', 'mov'])
+    if file and st.button("കൺവെർട്ട്"):
+        with open("in.mp4", "wb") as f: f.write(file.getbuffer())
+        ffmpeg.input("in.mp4").output(f"out.{fmt}").run(overwrite_output=True)
+        st.download_button("ഡൗൺലോഡ്", open(f"out.{fmt}", "rb"), file_name=f"out.{fmt}")
+
+# 3. എഡിറ്റർ (ട്രിമ്മിംഗ്)
 with tab3:
-    st.header("മെറ്റാഡാറ്റ പരിശോധന")
-    meta_file = st.file_uploader("വീഡിയോ അപ്‌ലോഡ് ചെയ്യുക", type=['mp4'])
+    st.write("വീഡിയോ ട്രിം ചെയ്യാൻ സമയം (സെക്കൻഡിൽ) നൽകുക:")
+    start = st.number_input("തുടങ്ങേണ്ട സമയം", value=0)
+    duration = st.number_input("ദൈർഘ്യം", value=10)
+    file_t = st.file_uploader("വീഡിയോ അപ്‌ലോഡ്", type=['mp4'])
+    if file_t and st.button("ട്രിം ചെയ്യുക"):
+        with open("in_trim.mp4", "wb") as f: f.write(file_t.getbuffer())
+        ffmpeg.input("in_trim.mp4", ss=start, t=duration).output("trimmed.mp4").run(overwrite_output=True)
+        st.download_button("ട്രിം ചെയ്ത വീഡിയോ ഡൗൺലോഡ്", open("trimmed.mp4", "rb"), file_name="trimmed.mp4")
+
+# 4. മെറ്റാഡാറ്റ
+with tab4:
+    meta_file = st.file_uploader("വീഡിയോ അപ്‌ലോഡ്", type=['mp4'])
     if meta_file:
-        st.write("ഫയൽ നാമം:", meta_file.name)
-        st.write("ഫയൽ സൈസ്:", f"{meta_file.size / 1024:.2f} KB")
-        st.info("മെറ്റാഡാറ്റ വിശകലനം പൂർത്തിയായി.")
+        st.write(f"ഫയൽ നാമം: {meta_file.name}")
+        st.write(f"ഫയൽ സൈസ്: {meta_file.size / (1024*1024):.2f} MB")
+
+if st.button("Logout"):
+    st.session_state.logged_in = False
+    st.rerun()
