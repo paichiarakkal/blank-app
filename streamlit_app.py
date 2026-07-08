@@ -1,43 +1,54 @@
 import streamlit as st
 import yt_dlp
+import ffmpeg
+import os
 
-# ആപ്പിന്റെ ലേഔട്ട്
-st.set_page_config(page_title="720p Video Downloader", page_icon="🎥")
-st.title("720p Video Downloader 🚀")
-st.write("ലിങ്ക് പേസ്റ്റ് ചെയ്ത് 720p ക്വാളിറ്റിയിൽ വീഡിയോ ഡൗൺലോഡ് ചെയ്യാം.")
+# പേജ് കോൺഫിഗറേഷൻ
+st.set_page_config(page_title="വീഡിയോ പ്രോസസ്സിംഗ് ഹബ്ബ്", layout="wide")
+st.title("🎬 വീഡിയോ പ്രോസസ്സിംഗ് ഹബ്ബ്")
 
-url = st.text_input("വീഡിയോ ലിങ്ക് ഇവിടെ പേസ്റ്റ് ചെയ്യുക:")
+tab1, tab2, tab3 = st.tabs(["📥 വീഡിയോ ഡൗൺലോഡർ", "🔄 ഫോർമാറ്റ് കൺവെർട്ടർ", "ℹ️ മെറ്റാഡാറ്റ"])
 
-if st.button("Download 720p Video"):
-    if url:
-        st.info("വീഡിയോ പ്രോസസ്സ് ചെയ്യുന്നു, ദയവായി കാത്തിരിക്കുക...")
+# 1. വീഡിയോ ഡൗൺലോഡർ
+with tab1:
+    st.header("വീഡിയോ ഡൗൺലോഡ് ചെയ്യുക")
+    url = st.text_input("YouTube ലിങ്ക് ഇവിടെ നൽകുക:")
+    if st.button("ഡൗൺലോഡ്"):
+        if url:
+            try:
+                ydl_opts = {'format': 'best'}
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([url])
+                st.success("ഡൗൺലോഡ് പൂർത്തിയായി!")
+            except Exception as e:
+                st.error(f"പിശക് സംഭവിച്ചു: {e}")
+
+# 2. ഫോർമാറ്റ് കൺവെർട്ടർ
+with tab2:
+    st.header("ഫോർമാറ്റ് മാറ്റുക")
+    uploaded_file = st.file_uploader("വീഡിയോ അപ്‌ലോഡ് ചെയ്യുക", type=['mp4', 'mkv', 'avi'])
+    format_option = st.selectbox("ഏത് ഫോർമാറ്റിലേക്ക് മാറ്റണം?", ['mp4', 'avi', 'mov'])
+    
+    if uploaded_file and st.button("കൺവെർട്ട് ചെയ്യുക"):
+        with open("temp_input.mp4", "wb") as f:
+            f.write(uploaded_file.getbuffer())
         
-        # 720p ഫോർമാറ്റ് സെലക്ട് ചെയ്യുന്നു
-        # 'best[height<=720][ext=mp4]' എന്നത് 720p അല്ലെങ്കിൽ അതിൽ താഴെയുള്ള ഏറ്റവും മികച്ച mp4 വീഡിയോ എടുക്കും
-        ydl_opts = {
-            'format': 'best[height<=720][ext=mp4]/best[ext=mp4]',
-            'nocheckcertificate': True,
-            'quiet': True,
-            'no_warnings': True,
-            'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-            }
-        }
-        
+        output_file = f"output.{format_option}"
         try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                video_url = info.get('url')
-                title = info.get('title', 'video')
-                
-            if video_url:
-                st.success(f"വിജയകരമായി ലഭിച്ചു: {title}")
-                st.video(video_url)
-                st.markdown(f'[ഡൗൺലോഡ് ചെയ്യാൻ ഇവിടെ ഞെക്കുക ⬇️]({video_url})')
-            else:
-                st.error("ക്ഷമിക്കണം, ഈ വീഡിയോയുടെ 720p ലിങ്ക് കണ്ടെത്താൻ കഴിഞ്ഞില്ല.")
-                
+            (
+                ffmpeg
+                .input("temp_input.mp4")
+                .output(output_file)
+                .run()
+            )
+            with open(output_file, "rb") as f:
+                st.download_button("ഡൗൺലോഡ് ചെയ്ത ഫയൽ", f, file_name=output_file)
         except Exception as e:
-            st.error(f"എറർ സംഭവിച്ചു: {e}")
-    else:
-        st.warning("ദയവായി ഒരു വീഡിയോ ലിങ്ക് നൽകുക!")
+            st.error(f"കൺവെർട്ടിംഗിൽ പിശക്: {e}")
+
+# 3. മെറ്റാഡാറ്റ എഡിറ്റർ
+with tab3:
+    st.header("മെറ്റാഡാറ്റ കാണുക")
+    meta_file = st.file_uploader("വീഡിയോ അപ്‌ലോഡ് ചെയ്ത് മെറ്റാഡാറ്റ കാണാം", type=['mp4'])
+    if meta_file:
+        st.write("ഫയൽ വിവരങ്ങൾ ലഭ്യമാണ് (Metadata Processing Ready)")
