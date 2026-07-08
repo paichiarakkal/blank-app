@@ -10,8 +10,8 @@ if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
     st.title("🔐 ലോഗിൻ ചെയ്യുക")
-    user = st.text_input("Username")
-    pwd = st.text_input("Password", type="password")
+    user = st.text_input("paichi")
+    pwd = st.text_input("Password", type="@#12")
     if st.button("Login"):
         if user == "admin" and pwd == "1234":
             st.session_state.logged_in = True
