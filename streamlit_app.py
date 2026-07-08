@@ -1,43 +1,84 @@
 import streamlit as st
 import yt_dlp
+import ffmpeg
+import os
 
-# ആപ്പിന്റെ ലേഔട്ട്
-st.set_page_config(page_title="720p Video Downloader", page_icon="🎥")
-st.title("720p Video Downloader 🚀")
-st.write("ലിങ്ക് പേസ്റ്റ് ചെയ്ത് 720p ക്വാളിറ്റിയിൽ വീഡിയോ ഡൗൺലോഡ് ചെയ്യാം.")
+# പേജ് കോൺഫിഗറേഷൻ
+st.set_page_config(page_title="Video Pro Hub", layout="wide")
 
-url = st.text_input("വീഡിയോ ലിങ്ക് ഇവിടെ പേസ്റ്റ് ചെയ്യുക:")
+# 1. ലോഗിൻ സിസ്റ്റം
+if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 
-if st.button("Download 720p Video"):
-    if url:
-        st.info("വീഡിയോ പ്രോസസ്സ് ചെയ്യുന്നു, ദയവായി കാത്തിരിക്കുക...")
-        
-        # 720p ഫോർമാറ്റ് സെലക്ട് ചെയ്യുന്നു
-        # 'best[height<=720][ext=mp4]' എന്നത് 720p അല്ലെങ്കിൽ അതിൽ താഴെയുള്ള ഏറ്റവും മികച്ച mp4 വീഡിയോ എടുക്കും
-        ydl_opts = {
-            'format': 'best[height<=720][ext=mp4]/best[ext=mp4]',
-            'nocheckcertificate': True,
-            'quiet': True,
-            'no_warnings': True,
-            'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-            }
-        }
-        
+if not st.session_state.logged_in:
+    st.title("🔐 ലോഗിൻ ചെയ്യുക")
+    user = st.text_input("Username")
+    pwd = st.text_input("Password", type="password")
+    if st.button("Login"):
+        if user == "Faisal" and pwd == "12345": 
+            st.session_state.logged_in = True
+            st.rerun()
+        else:
+            st.error("തെറ്റായ വിവരങ്ങൾ!")
+    st.stop()
+
+# 2. മെയിൻ ആപ്പ് ഇന്റർഫേസ്
+st.title("🎬 ഓൾ-ഇൻ-വൺ വീഡിയോ പ്രോസസ്സിംഗ് ഹബ്ബ്")
+menu = ["📥 ഡൗൺലോഡർ", "🔄 കൺവെർട്ടർ", "✂️ ട്രിമ്മർ", "🔗 മെർജർ", "🔊 അഡ്വാൻസ്ഡ്"]
+choice = st.sidebar.selectbox("മെനു തിരഞ്ഞെടുക്കുക", menu)
+
+# ഫംഗ്ഷൻ: വീഡിയോ ഡൗൺലോഡ്
+def get_video_url(url):
+    ydl_opts = {'format': 'best', 'http_headers': {'User-Agent': 'Mozilla/5.0'}}
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+        return info.get('url')
+
+# 3. ടാബുകൾ അനുസരിച്ചുള്ള പ്രവർത്തനങ്ങൾ
+if choice == "📥 ഡൗൺലോഡർ":
+    url = st.text_input("വീഡിയോ ലിങ്ക്:")
+    if st.button("Download"):
         try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                video_url = info.get('url')
-                title = info.get('title', 'video')
-                
-            if video_url:
-                st.success(f"വിജയകരമായി ലഭിച്ചു: {title}")
-                st.video(video_url)
-                st.markdown(f'[ഡൗൺലോഡ് ചെയ്യാൻ ഇവിടെ ഞെക്കുക ⬇️]({video_url})')
-            else:
-                st.error("ക്ഷമിക്കണം, ഈ വീഡിയോയുടെ 720p ലിങ്ക് കണ്ടെത്താൻ കഴിഞ്ഞില്ല.")
-                
-        except Exception as e:
-            st.error(f"എറർ സംഭവിച്ചു: {e}")
-    else:
-        st.warning("ദയവായി ഒരു വീഡിയോ ലിങ്ക് നൽകുക!")
+            v_url = get_video_url(url)
+            st.video(v_url)
+            st.success("വീഡിയോ റെഡിയാണ്!")
+        except: st.error("വീഡിയോ ഡൗൺലോഡ് പരാജയപ്പെട്ടു!")
+
+elif choice == "🔄 കൺവെർട്ടർ":
+    file = st.file_uploader("വീഡിയോ അപ്‌ലോഡ്", type=['mp4', 'mkv', 'avi'], key="c")
+    fmt = st.selectbox("ഏത് ഫോർമാറ്റിലേക്ക്?", ['mp4', 'avi', 'mov'])
+    if file and st.button("Convert"):
+        with open("in.mp4", "wb") as f: f.write(file.getbuffer())
+        ffmpeg.input("in.mp4").output(f"out.{fmt}").run(overwrite_output=True)
+        with open(f"out.{fmt}", "rb") as f: st.download_button("ഡൗൺലോഡ്", f, file_name=f"out.{fmt}")
+
+elif choice == "✂️ ട്രിമ്മർ":
+    s = st.number_input("തുടങ്ങേണ്ട സമയം (sec)", value=0)
+    d = st.number_input("ദൈർഘ്യം (sec)", value=10)
+    file = st.file_uploader("വീഡിയോ അപ്‌ലോഡ്", type=['mp4'], key="t")
+    if file and st.button("Trim"):
+        with open("in_trim.mp4", "wb") as f: f.write(file.getbuffer())
+        ffmpeg.input("in_trim.mp4", ss=s, t=d).output("trimmed.mp4").run(overwrite_output=True)
+        with open("trimmed.mp4", "rb") as f: st.download_button("ഡൗൺലോഡ്", f, "trimmed.mp4")
+
+elif choice == "🔗 മെർജർ":
+    files = st.file_uploader("വീഡിയോകൾ അപ്‌ലോഡ്", type=['mp4'], accept_multiple_files=True, key="m")
+    if files and st.button("Merge"):
+        file_list = []
+        for i, f in enumerate(files):
+            with open(f"f{i}.mp4", "wb") as wf: wf.write(f.getbuffer())
+            file_list.append(ffmpeg.input(f"f{i}.mp4"))
+        ffmpeg.concat(*file_list).output("merged.mp4").run(overwrite_output=True)
+        with open("merged.mp4", "rb") as f: st.download_button("ഡൗൺലോഡ്", f, "merged.mp4")
+
+elif choice == "🔊 അഡ്വാൻസ്ഡ്":
+    file = st.file_uploader("വീഡിയോ അപ്‌ലോഡ്", type=['mp4'], key="a")
+    act = st.selectbox("പ്രവർത്തനം:", ["മ്യൂട്ട് ചെയ്യുക", "വേഗത കൂട്ടുക (2x)"])
+    if file and st.button("Apply"):
+        with open("adv.mp4", "wb") as f: f.write(file.getbuffer())
+        if act == "മ്യൂട്ട് ചെയ്യുക": ffmpeg.input("adv.mp4").output("out_adv.mp4", an=None).run(overwrite_output=True)
+        else: ffmpeg.input("adv.mp4").output("out_adv.mp4", filter_complex="setpts=0.5*PTS").run(overwrite_output=True)
+        with open("out_adv.mp4", "rb") as f: st.download_button("ഡൗൺലോഡ്", f, "output.mp4")
+
+if st.sidebar.button("Logout"):
+    st.session_state.logged_in = False
+    st.rerun()
