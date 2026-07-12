@@ -1,30 +1,25 @@
 import streamlit as st
 import yt_dlp
-import os
 
-# ആപ്പിന്റെ പേരും പേജ് കോൺഫിഗറേഷനും
-st.set_page_config(page_title="Ultra HD Video Downloader", page_icon="🎥", layout="centered")
+st.set_page_config(page_title="Mobile Video Downloader", page_icon="📲")
+st.title("Mobile Video Downloader 🚀")
+st.write("ഫോണിൽ ഒട്ടും ക്വാളിറ്റി കുറയാതെ ഓഡിയോയും വീഡിയോയും ഡൗൺലോഡ് ചെയ്യാം.")
 
-st.title("Ultra HD Video Downloader 🚀")
-st.write("യൂട്യൂബ് വീഡിയോ/ഷോർട്സ് അതിന്റെ പരമാവധി ഒറിജിനൽ ക്വാളിറ്റിയിൽ (1080p, 4K) ഡൗൺലോഡ് ചെയ്യാം.")
+url = st.text_input("യൂട്യൂബ് ലിങ്ക് ഇവിടെ പേസ്റ്റ് ചെയ്യുക:")
 
-url = st.text_input("വീഡിയോ ലിങ്ക് ഇവിടെ പേസ്റ്റ് ചെയ്യുക:", placeholder="https://youtube.com/shorts/...")
-
-if st.button("Get Video & Download Link", type="primary"):
+if st.button("Get Video"):
     if url:
-        st.info("ഏറ്റവും മികച്ച ക്വാളിറ്റിയിലുള്ള വീഡിയോ പ്രോസസ്സ് ചെയ്യുന്നു. ദയവായി അല്പം കാത്തിരിക്കുക...")
+        st.info("ഫോണിന് അനുയോജ്യമായ ഏറ്റവും മികച്ച ക്വാളിറ്റി കണ്ടെത്തുന്നു...")
         
-        # പുതിയ കോൺഫിഗറേഷൻ: ഏറ്റവും മികച്ച വീഡിയോയും ഓഡിയോയും ലയിപ്പിക്കുന്നു
         ydl_opts = {
-            # മികച്ച വീഡിയോയും മികച്ച ഓഡിയോയും എടുത്ത് mp4 ഫയൽ ആക്കുന്നു
-            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best',
-            'merge_output_format': 'mp4',
+            # ഫോണുകളിൽ കൃത്യമായി പ്ലേ ചെയ്യുന്ന, ശബ്ദവും ചിത്രവും ഒന്നിച്ചുള്ള (Progressive) മികച്ച ഫോർമാറ്റ് എടുക്കുന്നു
+            'format': 'best[progressive=true][ext=mp4]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best',
             'nocheckcertificate': True,
             'quiet': True,
             'no_warnings': True,
             'extractor_args': {'youtube': {'player_client': ['android', 'ios']}},
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1',
             }
         }
         
@@ -33,30 +28,27 @@ if st.button("Get Video & Download Link", type="primary"):
                 info = ydl.extract_info(url, download=False)
                 video_url = info.get('url')
                 title = info.get('title', 'video')
-                thumbnail = info.get('thumbnail')
                 
             if video_url:
-                st.success(f"വിജയകരമായി കണ്ടെത്തി: {title}")
+                st.success(f"വിജയകരമായി ലഭിച്ചു: {title}")
                 
-                if thumbnail:
-                    st.image(thumbnail, width=300, caption="Video Thumbnail")
-                
-                # ഉയർന്ന ക്വാളിറ്റി ലിങ്ക് ആയതിനാൽ ചിലപ്പോൾ ബ്രൗസറിന് നേരിട്ട് പ്ലേ ചെയ്യാൻ പറ്റിയില്ലെങ്കിലും ഡൗൺലോഡ് ചെയ്യാം
+                # ഫോൺ സ്ക്രീനിൽ പ്ലേ ചെയ്യാൻ
                 st.video(video_url)
                 
-                # ഡൗൺലോഡ് ബട്ടൺ
+                # ഫോണിൽ നേരിട്ട് ഡൗൺലോഡ് ചെയ്യാനുള്ള ലളിതമായ ബട്ടൺ
                 st.markdown(f'''
                     <a href="{video_url}" download="{title}.mp4" target="_blank" style="text-decoration: none;">
-                        <div style="background-color:#4CAF50; color:white; padding:12px; border-radius:8px; text-align:center; font-weight:bold; font-size:18px; margin-top:15px; cursor:pointer;">
-                            ⬇️ ഫുൾ ക്ലിയറോടെ ഡൗൺലോഡ് ചെയ്യാൻ ഇവിടെ ക്ലിക്ക് ചെയ്യുക
+                        <div style="background-color:#00cc66; color:white; padding:12px; border-radius:10px; text-align:center; font-weight:bold; font-size:16px; margin-top:10px;">
+                            📲 ഗാലറിയിലേക്ക് ഡൗൺലോഡ് ചെയ്യാൻ ഇവിടെ ഞെക്കുക
                         </div>
                     </a>
                 ''', unsafe_allow_html=True)
                 
+                st.caption("💡 **ഫോൺ യൂസർമാർ ശ്രദ്ധിക്കാൻ:** മുകളിലെ ബട്ടൺ ഞെക്കുമ്പോൾ വീഡിയോ പ്ലേ ചെയ്യുകയാണെങ്കിൽ, വീഡിയോയുടെ താഴെ വലതുവശത്തുള്ള **3 കുത്തുകളിൽ (Three Dots)** ക്ലിക്ക് ചെയ്ത് **Download** അടിക്കുക.")
             else:
-                st.error("ക്ഷമിക്കണം, ലിങ്ക് കണ്ടെത്താൻ കഴിഞ്ഞില്ല.")
+                st.error("വീഡിയോ ലിങ്ക് കണ്ടെത്താൻ സാധിച്ചില്ല.")
                 
         except Exception as e:
-            st.error(f"എറർ സംഭവിച്ചു: {e}")
+            st.error(f"എറർ: {e}")
     else:
-        st.warning("ദയവായി ഒരു വീഡിയോ ലിങ്ക് നൽകുക!")
+        st.warning("ദയവായി ലിങ്ക് നൽകുക!")
