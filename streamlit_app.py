@@ -5,27 +5,28 @@ import imageio_ffmpeg
 
 st.set_page_config(page_title="True HD Downloader", page_icon="🎥")
 st.title("True HD Video Downloader 🚀")
-st.write("ഫോണിൽ ഒട്ടും ക്വാളിറ്റി കുറയാതെ 1080p/4K വീഡിയോകൾ ശബ്ദത്തോടെ ഡൗൺലോഡ് ചെയ്യാം.")
+st.write("യൂട്യൂബിലുള്ള അതേ ഒറിജിനൽ HD/4K ക്വാളിറ്റിയിൽ (ശബ്ദത്തോടെ) ഫോണിൽ ഡൗൺലോഡ് ചെയ്യാം.")
 
-url = st.text_input("യൂട്യൂബ് ലിങ്ക് ഇവിടെ നൽകുക:")
+url = st.text_input("യൂട്യൂബ് ലിങ്ക് ഇവിടെ പേസ്റ്റ് ചെയ്യുക:")
 
 if st.button("Download High Quality Video"):
     if url:
-        st.info("ഏറ്റവും മികച്ച ചിത്രവും ശബ്ദവും ഫോണിൽ ഒന്നിപ്പിക്കുന്നു. ദയവായി അല്പം കാത്തിരിക്കുക...")
+        st.info("ഏറ്റവും മികച്ച ചിത്രവും ശബ്ദവും ക്ലൗഡ് സെർവറിൽ ഒന്നിപ്പിക്കുന്നു. ദയവായി അല്പം കാത്തിരിക്കുക...")
         
         output_file = "premium_hd_video.mp4"
         
         if os.path.exists(output_file):
             os.remove(output_file)
             
-        # imageio-ffmpeg-ന്റെ പാത്ത് കണ്ടുപിടിക്കുന്നു
-        ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+        # ക്ലൗഡ് സെർവറിന് അനുയോജ്യമായ രീതിയിൽ ffmpeg എക്സിക്യൂട്ടബിൾ കണ്ടെത്തുന്നു
+        try:
+            ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+        except:
+            ffmpeg_path = "ffmpeg" # സെർവറിൽ ഡിഫോൾട്ട് ആയി ഉണ്ടെങ്കിൽ
         
         ydl_opts = {
-            # മികച്ച വീഡിയോയും ഓഡിയോയും നിർബന്ധമായി എടുക്കുന്നു
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best',
             'outtmpl': output_file,
-            # നമ്മൾ ഇൻസ്റ്റാൾ ചെയ്ത ffmpeg ലൊക്കേഷൻ yt-dlp-ക്ക് നൽകുന്നു
             'ffmpeg_location': ffmpeg_path, 
             'nocheckcertificate': True,
             'quiet': True,
