@@ -2,20 +2,32 @@ import streamlit as st
 import yt_dlp
 
 # ആപ്പിന്റെ ലേഔട്ട്
-st.set_page_config(page_title="720p Video Downloader", page_icon="🎥")
-st.title("720p Video Downloader 🚀")
-st.write("ലിങ്ക് പേസ്റ്റ് ചെയ്ത് 720p ക്വാളിറ്റിയിൽ വീഡിയോ ഡൗൺലോഡ് ചെയ്യാം.")
+st.set_page_config(page_title="Universal HD Video Downloader", page_icon="🎥")
+st.title("Universal HD Video Downloader 🚀")
+st.write("ലിങ്ക് പേസ്റ്റ് ചെയ്ത് മികച്ച ക്വാളിറ്റിയിൽ വീഡിയോ ഡൗൺലോഡ് ചെയ്യാം.")
 
 url = st.text_input("വീഡിയോ ലിങ്ക് ഇവിടെ പേസ്റ്റ് ചെയ്യുക:")
 
-if st.button("Download 720p Video"):
+# ക്വാളിറ്റി സെലക്ട് ചെയ്യാനുള്ള ഓപ്ഷൻ
+quality = st.selectbox(
+    "വീഡിയോ ക്വാളിറ്റി തിരഞ്ഞെടുക്കുക:",
+    ("Best Quality (1080p/4K/HD)", "720p Quality")
+)
+
+if st.button("Download Video"):
     if url:
         st.info("വീഡിയോ പ്രോസസ്സ് ചെയ്യുന്നു, ദയവായി കാത്തിരിക്കുക...")
         
-        # 720p ഫോർമാറ്റ് സെലക്ട് ചെയ്യുന്നു
-        # 'best[height<=720][ext=mp4]' എന്നത് 720p അല്ലെങ്കിൽ അതിൽ താഴെയുള്ള ഏറ്റവും മികച്ച mp4 വീഡിയോ എടുക്കും
+        # യൂസർ തിരഞ്ഞെടുത്ത ക്വാളിറ്റി അനുസരിച്ച് format സെറ്റ് ചെയ്യുന്നു
+        if quality == "Best Quality (1080p/4K/HD)":
+            # ലഭ്യമായതിൽ വെച്ച് ഏറ്റവും മികച്ച വീഡിയോയും ഓഡിയോയും
+            video_format = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
+        else:
+            # നിങ്ങളുടെ പഴയ കോഡിലെ 720p ഫോർമാറ്റ്
+            video_format = 'best[height<=720][ext=mp4]/best[ext=mp4]'
+            
         ydl_opts = {
-            'format': 'best[height<=720][ext=mp4]/best[ext=mp4]',
+            'format': video_format,
             'nocheckcertificate': True,
             'quiet': True,
             'no_warnings': True,
@@ -35,7 +47,7 @@ if st.button("Download 720p Video"):
                 st.video(video_url)
                 st.markdown(f'[ഡൗൺലോഡ് ചെയ്യാൻ ഇവിടെ ഞെക്കുക ⬇️]({video_url})')
             else:
-                st.error("ക്ഷമിക്കണം, ഈ വീഡിയോയുടെ 720p ലിങ്ക് കണ്ടെത്താൻ കഴിഞ്ഞില്ല.")
+                st.error("ക്ഷമിക്കണം, ഈ വീഡിയോയുടെ ഡൗൺലോഡ് ലിങ്ക് കണ്ടെത്താൻ കഴിഞ്ഞില്ല.")
                 
         except Exception as e:
             st.error(f"എറർ സംഭവിച്ചു: {e}")
