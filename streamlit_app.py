@@ -1,43 +1,22 @@
 import streamlit as st
 import yt_dlp
-import os
-import imageio_ffmpeg
 
-# ആപ്പിന്റെ ലേഔട്ട്
-st.set_page_config(page_title="High Quality Video Downloader", page_icon="🎥")
-st.title("High Quality Video Downloader 🚀")
-st.write("ലിങ്ക് പേസ്റ്റ് ചെയ്ത് മികച്ച ക്വാളിറ്റിയിൽ (ശബ്ദത്തോടെ) വീഡിയോ ഡൗൺലോഡ് ചെയ്യാം.")
+st.set_page_config(page_title="Ultimate HD Downloader", page_icon="🎥")
+st.title("Ultimate HD Video Downloader 🚀")
+st.write("യൂട്യൂബ് വീഡിയോ/ഷോർട്സ് ഏറ്റവും ഉയർന്ന ഒറിജിനൽ ക്വാളിറ്റിയിൽ ഡൗൺലോഡ് ചെയ്യാം.")
 
 url = st.text_input("വീഡിയോ ലിങ്ക് ഇവിടെ പേസ്റ്റ് ചെയ്യുക:")
 
-if st.button("Download Video"):
+if st.button("Get High Quality Links"):
     if url:
-        st.info("വീഡിയോ പ്രോസസ്സ് ചെയ്യുന്നു, ദയവായി കാത്തിരിക്കുക...")
+        st.info("മികച്ച ഡൗൺലോഡ് ലിങ്കുകൾ കണ്ടെത്തുന്നു, ദയവായി കാത്തിരിക്കുക...")
         
-        # താൽക്കാലികമായി സെർവറിൽ ഫയൽ സൂക്ഷിക്കാനുള്ള പേര്
-        output_filename = "downloaded_hq_video.mp4"
-        
-        # പഴയ ഫയലുകൾ ഉണ്ടെങ്കിൽ ഡിലീറ്റ് ചെയ്യുന്നു
-        if os.path.exists(output_filename):
-            os.remove(output_filename)
-            
-        # imageio-ffmpeg പാത്ത് കണ്ടെത്തുന്നു
-        try:
-            ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
-        except:
-            ffmpeg_path = "ffmpeg"
-        
-        # മികച്ച വീഡിയോയും ഓഡിയോയും ലയിപ്പിക്കാനുള്ള ഓപ്ഷനുകൾ
+        # YouTube ബ്ലോക്ക് ചെയ്യാതിരിക്കാനുള്ള കൃത്യമായ ഓപ്ഷനുകൾ
         ydl_opts = {
-            # 1080p/720p/4K ലഭ്യമായതിൽ വെച്ച് ഏറ്റവും മികച്ച വീഡിയോയും ഓഡിയോയും എടുക്കുന്നു
-            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best',
-            'outtmpl': output_filename,
-            'ffmpeg_location': ffmpeg_path,
             'nocheckcertificate': True,
             'quiet': True,
             'no_warnings': True,
-            # യൂട്യൂബിന്റെ ബ്ലോക്കിംഗ് ഒഴിവാക്കാനുള്ള ക്ലയന്റ് ഐഡന്റിറ്റി
-            'extractor_args': {'youtube': {'player_client': ['android', 'ios']}},
+            'extractor_args': {'youtube': {'player_client': ['android', 'web', 'ios']}},
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
             }
@@ -45,31 +24,58 @@ if st.button("Download Video"):
         
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                # സെർവറിലേക്ക് ആദ്യം വീഡിയോ ഡൗൺലോഡ് ചെയ്ത് മേർജ് ചെയ്യുന്നു
-                ydl.download([url])
+                info = ydl.extract_info(url, download=False)
+                formats = info.get('formats', [])
+                title = info.get('title', 'video')
+                thumbnail = info.get('thumbnail')
                 
-            # മേർജ് ചെയ്ത ഫയൽ ബൈറ്റ്സ് ആയി റീഡ് ചെയ്യുന്നു
-            if os.path.exists(output_filename):
-                with open(output_filename, "rb") as file:
-                    video_bytes = file.read()
+            if formats:
+                st.success(f"വിജയകരമായി കണ്ടെത്തി: {title}")
+                if thumbnail:
+                    st.image(thumbnail, width=250)
+                
+                # --- ഇവിടെ നമ്മൾ ക്വാളിറ്റി തിരിച്ചു ലിങ്കുകൾ കാണിക്കുന്നു ---
+                st.markdown("### 📥 ഡൗൺലോഡ് ഓപ്ഷനുകൾ:")
+                
+                # 1. ചിത്രവും ശബ്ദവും ഒന്നിച്ചുള്ള മികച്ച ഫോർമാറ്റ് (ഫോണിൽ നേരിട്ട് കാണാൻ)
+                # സാധാരണയായി ഇത് 720p ആയിരിക്കും
+                progressive_url = None
+                for f in reversed(formats):
+                    if f.get('vcodec') != 'none' and f.get('acodec') != 'none' and f.get('ext') == 'mp4':
+                        progressive_url = f.get('url')
+                        break
+                
+                if progressive_url:
+                    st.video(progressive_url)
+                    st.markdown(f'👉 [**720p HD (ശബ്ദത്തോടെ നേരിട്ട് ഡൗൺലോഡ് ചെയ്യാൻ) ⬇️**]({progressive_url})')
+                
+                st.write("---")
+                st.subheader("🔥 1080p / 4K ഫുൾ ക്ലിയറിറ്റി വേണമെങ്കിൽ:")
+                st.caption("ശ്രദ്ധിക്കുക: YouTube ഉയർന്ന ക്വാളിറ്റിയിൽ ചിത്രവും ശബ്ദവും വെവ്വേറെയാണ് നൽകുന്നത്. അതിനാൽ താഴെയുള്ള ലിങ്കുകൾ പ്രത്യേകം ഉപയോഗിക്കാം.")
+                
+                # 2. ഏറ്റവും ഉയർന്ന ക്വാളിറ്റി വീഡിയോ ലിങ്ക് (ചിത്രം മാത്രം - 1080p/4K)
+                best_video_url = None
+                video_resolution = "Full HD/4K"
+                for f in reversed(formats):
+                    if f.get('vcodec') != 'none' and f.get('acodec') == 'none' and f.get('ext') == 'mp4':
+                        best_video_url = f.get('url')
+                        video_resolution = f.get('resolution', 'High Quality')
+                        break
+                        
+                # 3. ഏറ്റവും മികച്ച ഓഡിയോ ലിങ്ക് (ശബ്ദം മാത്രം)
+                best_audio_url = None
+                for f in reversed(formats):
+                    if f.get('vcodec') == 'none' and f.get('acodec') != 'none':
+                        best_audio_url = f.get('url')
+                        break
+                
+                if best_video_url:
+                    st.markdown(f'🎬 [**ഫുൾ ക്ലിയർ വീഡിയോ മാത്രം ഡൗൺലോഡ് ചെയ്യാൻ ({video_resolution}) ⬇️**]({best_video_url})')
+                if best_audio_url:
+                    st.markdown(f'🎵 [**ഉയർന്ന ക്വാളിറ്റി ഓഡിയോ മാത്രം ഡൗൺലോഡ് ചെയ്യാൻ ⬇️**]({best_audio_url})')
                     
-                st.success("വീഡിയോ വിജയകരമായി പ്രോസസ്സ് ചെയ്തു!")
-                
-                # ഫുൾ ക്ലിയറിലുള്ള വീഡിയോ പ്ലെയർ
-                st.video(video_bytes)
-                
-                # ഗാലറിയിലേക്ക് നേരിട്ട് സേവ് ചെയ്യാനുള്ള ഔദ്യോഗിക ബട്ടൺ
-                st.download_button(
-                    label="⬇️ ഗാലറിയിലേക്ക് ഡൗൺലോഡ് ചെയ്യുക (Full HD)",
-                    data=video_bytes,
-                    file_name="Premium_HD_Video.mp4",
-                    mime="video/mp4"
-                )
-                
-                # ഉപയോഗത്തിന് ശേഷം സെർവറിലെ ഫയൽ ഡിലീറ്റ് ചെയ്ത് മെമ്മറി ഫ്രീ ആക്കുന്നു
-                os.remove(output_filename)
             else:
-                st.error("ക്ഷമിക്കണം, വീഡിയോ പ്രോസസ്സ് ചെയ്യാൻ കഴിഞ്ഞില്ല.")
+                st.error("ക്ഷമിക്കണം, ഈ വീഡിയോയുടെ ലിങ്കുകൾ കണ്ടെത്താൻ കഴിഞ്ഞില്ല.")
                 
         except Exception as e:
             st.error(f"എറർ സംഭവിച്ചു: {e}")
