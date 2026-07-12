@@ -5,7 +5,7 @@ import os
 # ആപ്പിന്റെ ലേഔട്ട്
 st.set_page_config(page_title="Universal HD Video Downloader", page_icon="🎥")
 st.title("Universal HD Video Downloader 🚀")
-st.write("ലിങ്ക് പേസ്റ്റ് ചെയ്ത് മികച്ച ക്വാളിറ്റിൽ വീഡിയോ ഡൗൺലോഡ് ചെയ്യാം.")
+st.write("ലിങ്ക് പേസ്റ്റ് ചെയ്ത് മികച്ച ക്വാളിറ്റിയിൽ വീഡിയോ ഡൗൺലോഡ് ചെയ്യാം.")
 
 url = st.text_input("വീഡിയോ ലിങ്ക് ഇവിടെ പേസ്റ്റ് ചെയ്യുക:")
 
@@ -18,27 +18,33 @@ if st.button("Download Video"):
     if url:
         st.info("വീഡിയോ പ്രോസസ്സ് ചെയ്യുന്നു, ദയവായി കാത്തിരിക്കുക...")
         
-        # യൂസർ സെലക്ട് ചെയ്യുന്നതിന് അനുസരിച്ച് ഫോർമാറ്റ് മാറ്റുന്നു
         if quality == "Best Quality (1080p/4K/HD)":
             video_format = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
         else:
             video_format = 'best[height<=720][ext=mp4]/best[ext=mp4]'
             
-        # വീഡിയോ ലോക്കലായി ഡൗൺലോഡ് ചെയ്യാനുള്ള ഓപ്ഷൻസ്
+        # 403 Forbidden എറർ ഒഴിവാക്കാനുള്ള പുതിയ ഓപ്ഷൻസ് ഇവിടെ ചേർത്തിട്ടുണ്ട്
         ydl_opts = {
             'format': video_format,
-            'outtmpl': 'downloads/%(title)s.%(ext)s', # downloads ഫോൾഡറിലേക്ക് സേവ് ചെയ്യും
+            'outtmpl': 'downloads/%(title)s.%(ext)s',
             'nocheckcertificate': True,
             'quiet': True,
             'no_warnings': True,
+            # യൂട്യൂബിന്റെ പുതിയ ബ്ലോക്കിംഗ് സിസ്റ്റം മറികടക്കാൻ ഇത് സഹായിക്കും
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web']
+                }
+            },
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
             }
         }
         
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                # ഇവിടെ download=True നൽകി വീഡിയോ താല്കാലികമായി സെർവറിലേക്ക് ഡൗൺലോഡ് ചെയ്യുന്നു
                 info = ydl.extract_info(url, download=True)
                 filename = ydl.prepare_filename(info)
                 title = info.get('title', 'video')
@@ -46,11 +52,9 @@ if st.button("Download Video"):
             if os.path.exists(filename):
                 st.success(f"വിജയകരമായി ലഭിച്ചു: {title}")
                 
-                # ഫയൽ ബൈനറിയായി റീഡ് ചെയ്യുന്നു
                 with open(filename, "rb") as file:
                     video_bytes = file.read()
                 
-                # Streamlit-ന്റെ ഒഫീഷ്യൽ ഡൗൺലോഡ് ബട്ടൺ
                 st.download_button(
                     label="ഫോണിലേക്ക്/സിസ്റ്റത്തിലേക്ക് ഡൗൺലോഡ് ചെയ്യുക ⬇️",
                     data=video_bytes,
@@ -58,7 +62,6 @@ if st.button("Download Video"):
                     mime="video/mp4"
                 )
                 
-                # ഡൗൺലോഡ് കഴിഞ്ഞ ശേഷം സെർവറിലെ ഫയൽ ഡിലീറ്റ് ചെയ്യുക (സ്പേസ് കളയാതിരിക്കാൻ)
                 os.remove(filename)
             else:
                 st.error("ക്ഷമിക്കണം, ഈ വീഡിയോയുടെ ഡൗൺലോഡ് ലിങ്ക് കണ്ടെത്താൻ കഴിഞ്ഞില്ല.")
