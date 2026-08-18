@@ -2,72 +2,66 @@ import io
 import streamlit as st
 import yt_dlp
 
-st.set_page_config(
-    page_title='Video Downloader', page_icon='🚀', layout='centered'
+# ആപ്പിന്റെ പുതിയ തലക്കെട്ട്
+st.title("All-in-One Video Downloader 🚀")
+st.write(
+    "YouTube, Instagram, Facebook, TikTok തുടങ്ങി ഏത് വീഡിയോ ലിങ്കും താഴെ പേസ്റ്റ്"
+    " ചെയ്ത് ഡൗൺലോഡ് ചെയ്യാം."
 )
 
-st.title('All-in-One Video Downloader 🚀')
-st.write('YouTube ഉൾപ്പെടെയുള്ള ഏത് വീഡിയോ ലിങ്കും താഴെ നൽകി ഡൗൺലോഡ് ചെയ്യാം.')
+# ലിങ്ക് വാങ്ങാനുള്ള ബോക്സ്
+url = st.text_input("വീഡിയോ ലിങ്ക് ഇവിടെ പേസ്റ്റ് ചെയ്യുക:")
 
-url = st.text_input('വീഡിയോ ലിങ്ക് ഇവിടെ പേസ്റ്റ് ചെയ്യുക:')
-
-if st.button('Fetch Video'):
+if st.button("Download Video"):
   if url:
-    st.info('വീഡിയോ പ്രോസസ്സ് ചെയ്യുന്നു, ദയവായി കാത്തിരിക്കുക...')
+    st.info("വീഡിയോ പ്രോസസ്സ് ചെയ്യുന്നു, ദയവായി കാത്തിരിക്കുക...")
 
-    # YouTube Bot Detection മറികടക്കാനുള്ള കോൺഫിഗറേഷൻ
+    # കൂടുതൽ സ്റ്റേബിൾ ആയ കോൺഫിഗറേഷൻ
     ydl_opts = {
-        'format': 'best[ext=mp4]/best',
-        'nocheckcertificate': True,
-        'quiet': True,
-        'no_warnings': True,
-        'extractor_args': {'youtube': ['player_client=android,web']},
-        'http_headers': {
-            'User-Agent': (
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                ' (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
+        # ഒറ്റ ഫയലായി കിട്ടുന്ന ഏറ്റവും നല്ല mp4 ഫോർമാറ്റ് സെലക്ട് ചെയ്യുന്നു (FFmpeg എറർ ഒഴിവാക്കാൻ)
+        "format": "best[ext=mp4]/best",
+        "nocheckcertificate": True,
+        "quiet": True,
+        "no_warnings": True,
+        "http_headers": {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                " (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
             ),
-            'Accept-Language': 'en-US,en;q=0.9',
         },
     }
 
     try:
       with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        # വീഡിയോയുടെ വിവരങ്ങൾ എടുക്കുന്നു
+        # ഫയൽ സെർവറിലേക്ക് ഡൗൺലോഡ് ചെയ്യാതെ അതിന്റെ വിവരങ്ങൾ മാത്രം എടുക്കുന്നു
         info = ydl.extract_info(url, download=False)
-        title = info.get('title', 'video')
+        video_url = info.get("url")
+        title = info.get("title", "video")
 
-        # ഫയൽ നെയിം ശരിയാക്കുന്നു
-        clean_title = ''.join(
-            [c for c in title if c.isalnum() or c in (' ', '_', '-')]
-        ).strip()
-        filename = f'{clean_title}.mp4'
+        # വീഡിയോയുടെ ടൈറ്റിൽ ക്ലീൻ ചെയ്ത് ഫയൽ നെയിം ഉണ്ടാക്കുന്നു
+        clean_title = "".join(
+            [c for c in title if c.isalpha() or c.isdigit() or c == " "]
+        ).rstrip()
+        filename = f"{clean_title}.mp4"
 
-        st.success(f'**വീഡിയോ കണ്ടെത്തി:** {title}')
+      if video_url:
+        st.success("വീഡിയോ റെഡിയായിട്ടുണ്ട്!")
+        # ഡൗൺലോഡ് ലിങ്ക് നേരിട്ട് Streamlit ബട്ടണിലേക്ക് നൽകുന്നു
+        st.video(
+            video_url
+        )  # ആപ്പിൽ തന്നെ വീഡിയോ പ്ലേ ചെയ്തു നോക്കാനും സാധിക്കും
 
-        # Direct Video URL കാണിക്കുന്നു
-        video_url = info.get('url')
-
-        if video_url:
-          st.video(video_url)
-
-          # ഡൗൺലോഡ് ചെയ്യാനുള്ള ലിങ്ക്
-          st.markdown(
-              f'<a href="{video_url}" target="_blank" download="{filename}">'
-              '<button style="background-color:#4CAF50; color:white; padding:10px'
-              ' 20px; border:none; border-radius:5px; cursor:pointer;">'
-              '⬇️ ഫോണിലേക്ക് / കമ്പ്യൂട്ടറിലേക്ക് ഡൗൺലോഡ് ചെയ്യുക</button>a>',
-              unsafe_allow_html=True,
-          )
+        # ബോണസ്: ക്ലൗഡിൽ പ്രശ്നമില്ലാതെ വർക്ക് ആകാൻ ഒരു ഡൗൺലോഡ് ബട്ടൺ ലിങ്ക് കൂടി നൽകാം
+        st.markdown(
+            f"[ഫോണിലേക്ക് ഡൗൺലോഡ് ചെയ്യാൻ ഇവിടെ ഞെക്കുക ⬇️]({video_url})"
+        )
+      else:
+        st.error("വീഡിയോ യുആർഎൽ കണ്ടെത്താൻ കഴിഞ്ഞില്ല.")
 
     except Exception as e:
       st.error(
-          'YouTube സുരക്ഷാ കാരണങ്ങളാൽ ഈ ലിങ്ക് ബ്ലോക്ക് ചെയ്തിരിക്കുകയാണ്.'
+          "ഡൗൺലോഡ് ചെയ്യാൻ സാധിച്ചില്ല. ലിങ്ക് കൃത്യമാണോ എന്ന് പരിശോധിക്കുക."
+          f" എറർ: {e}"
       )
-      st.warning(
-          'ശ്രദ്ധിക്കുക: Instagram, Facebook, TikTok തുടങ്ങിയ ലിങ്കുകൾ ഇതിൽ'
-          ' സുഗമമായി വർക്ക് ചെയ്യും.'
-      )
-      st.code(str(e))
   else:
-    st.warning('ദയവായി ഒരു ലിങ്ക് നൽകുക!')
+    st.warning("ദയവായി ഒരു വീഡിയോ ലിങ്ക് നൽകുക!")
